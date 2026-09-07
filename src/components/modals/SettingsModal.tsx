@@ -15,7 +15,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onConfirmRestart,
   onBackToHome,
 }) => {
-  const { state, toggleSound, toggleMusic } = useGame();
+  const { state, toggleSound, toggleMusic, setAIDifficulty } = useGame();
 
   if (!isOpen) return null;
 
@@ -62,6 +62,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <span className="lang-badge active">English</span>
               <span className="lang-badge">Hindi (Soon)</span>
             </div>
+          </div>
+
+          <div className="setting-item">
+            <div className="setting-label">
+              🧠 AI Opponent Difficulty
+            </div>
+            <select
+              className="select-control"
+              value={state.aiDifficulty || 'MASTER'}
+              onChange={e => setAIDifficulty(e.target.value as any)}
+              style={{ background: 'rgba(0,0,0,0.6)', color: '#f1c40f', border: '1px solid #d4af37', padding: '6px 12px', borderRadius: '8px', fontWeight: 800 }}
+            >
+              <option value="MASTER">👑 MASTER / EXTREME</option>
+              <option value="HARD">🔥 HARD</option>
+              <option value="MEDIUM">⚡ MEDIUM</option>
+              <option value="EASY">🌱 EASY</option>
+            </select>
           </div>
         </div>
 

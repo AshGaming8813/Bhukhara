@@ -11,11 +11,13 @@ import { Loader2, RotateCw, Maximize2 } from 'lucide-react';
 interface GameTableProps {
   onOpenSettings: () => void;
   onConfirmRestart: () => void;
+  onConfirmLeave?: () => void;
 }
 
 export const GameTable: React.FC<GameTableProps> = ({
   onOpenSettings,
   onConfirmRestart,
+  onConfirmLeave,
 }) => {
   const { state, activeEmote, sendOnlineEmote } = useGame();
   const is4P = state.gameMode === '4P';
@@ -115,7 +117,7 @@ export const GameTable: React.FC<GameTableProps> = ({
       )}
 
       {/* Top Header Bar */}
-      <StatusHeader onOpenSettings={onOpenSettings} onConfirmRestart={onConfirmRestart} />
+      <StatusHeader onOpenSettings={onOpenSettings} onConfirmRestart={onConfirmRestart} onConfirmLeave={onConfirmLeave} />
 
       {/* Main Table Felt Container */}
       <div className="table-felt-container">

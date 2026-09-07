@@ -129,8 +129,35 @@ export async function syncDataWithBackendServer(): Promise<void> {
       if (data && Array.isArray(data.players)) {
         const remoteUsers: User[] = data.players;
         const localUsers = authBackend.getUsers();
-        let changed = false;
 
+        // 1. Sync local users that are not in remote DB to the server
+        for (const lu of localUsers) {
+          if (lu.role === 'player' && lu.email && lu.id !== 'usr_admin_1') {
+            const existsInRemote = remoteUsers.some(
+              ru => ru.id === lu.id || ru.player_id === lu.player_id || (ru.email && ru.email.toLowerCase() === lu.email.toLowerCase())
+            );
+            if (!existsInRemote) {
+              try {
+                const syncRes = await fetch(`${apiUrl}/auth/sync-user`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ user: lu }),
+                });
+                if (syncRes.ok) {
+                  const syncData = await syncRes.json();
+                  if (syncData && syncData.user) {
+                    remoteUsers.push(syncData.user);
+                  }
+                }
+              } catch (err) {
+                // Ignore background sync errors
+              }
+            }
+          }
+        }
+
+        // 2. Merge remote server users into local cache
+        let changed = false;
         remoteUsers.forEach(ru => {
           const idx = localUsers.findIndex(
             lu => lu.id === ru.id || lu.player_id === ru.player_id || (lu.email && ru.email && lu.email.toLowerCase() === ru.email.toLowerCase())
@@ -139,14 +166,19 @@ export async function syncDataWithBackendServer(): Promise<void> {
             localUsers.push(ru);
             changed = true;
           } else {
-            if (localUsers[idx].coin_balance !== ru.coin_balance || localUsers[idx].username !== ru.username || localUsers[idx].status !== ru.status) {
+            if (
+              localUsers[idx].coin_balance !== ru.coin_balance ||
+              localUsers[idx].username !== ru.username ||
+              localUsers[idx].status !== ru.status ||
+              localUsers[idx].player_id !== ru.player_id
+            ) {
               localUsers[idx] = { ...localUsers[idx], ...ru };
               changed = true;
             }
           }
         });
 
-        if (changed) {
+        if (changed || remoteUsers.length > localUsers.length) {
           authBackend.saveUsers(localUsers);
           notifyAuthEvent('USERS_SYNCED', localUsers);
         }
@@ -275,7 +307,105 @@ export const authBackend = {
     return `BHUK-${maxNum + 1}`;
   },
 
-  // Player Registration
+  // Server-Authoritative Player Registration
+  async registerPlayerAsync(
+    username: string,
+    email: string,
+    pass: string,
+    confirmPass: string
+  ): Promise<{ success: boolean; error?: string; session?: UserSession }> {
+    const cleanName = username.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanName || cleanName.length < 2) {
+      return { success: false, error: 'Username must be at least 2 characters long.' };
+    }
+
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'Please enter a valid email address.' };
+    }
+
+    if (!pass || pass.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters long.' };
+    }
+
+    if (pass !== confirmPass) {
+      return { success: false, error: 'Password and Confirm Password do not match.' };
+    }
+
+    // Try central backend server registration first
+    try {
+      const res = await fetch(`${getApiUrl()}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: cleanName,
+          email: cleanEmail,
+          password: pass,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success && data.user) {
+        const userObj: User = {
+          ...data.user,
+          password_hash: hashPassword(pass),
+        };
+        const users = this.getUsers();
+        const idx = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+        if (idx !== -1) {
+          users[idx] = userObj;
+        } else {
+          users.push(userObj);
+        }
+        this.saveUsers(users);
+
+        const session = this.createSession(userObj);
+        notifyAuthEvent('USER_REGISTERED', userObj);
+        return { success: true, session };
+      } else if (data && data.error) {
+        return { success: false, error: data.error };
+      }
+    } catch (err) {
+      console.warn('Backend server register unreachable, falling back to local creation:', err);
+    }
+
+    // Offline / Network Fallback local registration
+    const users = this.getUsers();
+    if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
+      return { success: false, error: 'An account with this email already exists.' };
+    }
+
+    if (users.some(u => u.username.toLowerCase() === cleanName.toLowerCase())) {
+      return { success: false, error: 'Username is already taken.' };
+    }
+
+    const newPlayerId = this.generateNextPlayerId();
+    const newUser: User = {
+      id: 'usr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      player_id: newPlayerId,
+      username: cleanName,
+      email: cleanEmail,
+      password_hash: hashPassword(pass),
+      role: 'player',
+      coin_balance: 1000,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    users.push(newUser);
+    this.saveUsers(users);
+
+    const session = this.createSession(newUser);
+    notifyAuthEvent('USER_REGISTERED', newUser);
+
+    // Trigger async sync in background to upload local user to server as soon as connection is live
+    syncDataWithBackendServer();
+
+    return { success: true, session };
+  },
+
   registerPlayer(
     username: string,
     email: string,
@@ -318,7 +448,7 @@ export const authBackend = {
       email: cleanEmail,
       password_hash: hashPassword(pass),
       role: 'player',
-      coin_balance: 0,
+      coin_balance: 1000,
       status: 'active',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -330,7 +460,7 @@ export const authBackend = {
     const session = this.createSession(newUser);
     notifyAuthEvent('USER_REGISTERED', newUser);
 
-    // Sync with central backend server REST API
+    // Sync with central backend server REST API immediately
     fetch(`${getApiUrl()}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -352,8 +482,8 @@ export const authBackend = {
           }
         }
       })
-      .catch(err => {
-        console.warn('Backend server register sync error:', err);
+      .catch(() => {
+        syncDataWithBackendServer();
       });
 
     return { success: true, session };

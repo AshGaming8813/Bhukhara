@@ -90,11 +90,11 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
             </p>
             <div className="alert-box alert-danger">
               <ShieldAlert size={18} strokeWidth={2.5} />
-              <strong>VERY IMPORTANT FOUL RULE:</strong> The remaining Moda card MUST NOT fit into any existing open Series or Triplicate on the table. If it can fit → <strong>INVALID MODA FOUL!</strong> Opponent immediately wins!
+              <strong>VERY IMPORTANT FOUL RULE:</strong> The remaining Moda card MUST NOT fit into any existing open Series or Triplicate on the table. <em>(Exception: If your single remaining card is a <strong>Joker</strong>, Moda IS ALLOWED and is NOT a foul!)</em>
             </div>
             <ul>
               <li>
-                <strong>First Moda:</strong> Awards the 13-card <strong>Bhukhara pile</strong>! Play Bhukhara cards during turn, then say <strong>HELLO</strong>. (+5 Moda bonus)
+                <strong>First Moda:</strong> Awards the 13-card <strong>Bhukhara pile</strong>! Play Bhukhara cards during turn, then click <strong>Say Hello</strong> to pass turn to next player while keeping remaining hand cards. (+5 Moda bonus)
               </li>
               <li>
                 <strong>Second Moda:</strong> Completes current Bazzi (+5 additional Moda bonus).

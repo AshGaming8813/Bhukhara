@@ -49,11 +49,51 @@ app.post('/api/auth/register', (req, res) => {
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'Username, email, and password are required.' });
     }
-    const newUser = dbStore.createUser({ username, email, password });
+    const safeUserCreated = dbStore.createUser({ username, email, password });
     const { session, user } = dbStore.authenticateUser(email, password);
+    
+    // Broadcast event to all WebSocket clients (including admin dashboards)
+    const broadcastPayload = JSON.stringify({
+      type: 'PLAYER_REGISTERED',
+      player: user,
+      timestamp: new Date().toISOString(),
+    });
+    
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(broadcastPayload);
+      }
+    });
+
     res.json({ success: true, session, user });
   } catch (err) {
     res.status(400).json({ error: err.message || 'Registration failed.' });
+  }
+});
+
+app.post('/api/auth/sync-user', (req, res) => {
+  try {
+    const { user } = req.body;
+    if (!user || !user.email) {
+      return res.status(400).json({ error: 'User payload with email is required.' });
+    }
+    const syncedUser = dbStore.syncClientUser(user);
+    
+    // Broadcast player update to WebSocket subscribers
+    const broadcastPayload = JSON.stringify({
+      type: 'PLAYER_REGISTERED',
+      player: syncedUser,
+      timestamp: new Date().toISOString(),
+    });
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(broadcastPayload);
+      }
+    });
+
+    res.json({ success: true, user: syncedUser });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Sync failed.' });
   }
 });
 

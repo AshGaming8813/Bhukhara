@@ -5,6 +5,7 @@ import { GameTable } from './components/game/GameTable';
 import { HowToPlayModal } from './components/modals/HowToPlayModal';
 import { SettingsModal } from './components/modals/SettingsModal';
 import { RestartConfirmModal } from './components/modals/RestartConfirmModal';
+import { LeaveConfirmModal } from './components/modals/LeaveConfirmModal';
 import { FoulModal } from './components/modals/FoulModal';
 import { WinnerModal } from './components/modals/WinnerModal';
 
@@ -43,6 +44,7 @@ const MainApp: React.FC = () => {
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRestartConfirmOpen, setIsRestartConfirmOpen] = useState(false);
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
 
   // Online Multiplayer States
   const [isOnlineMenuOpen, setIsOnlineMenuOpen] = useState(false);
@@ -330,11 +332,13 @@ const MainApp: React.FC = () => {
           onOpenOnlineMenu={handleOpenOnlineMenu}
           onOpenAuthModal={() => setIsPlayerAuthOpen(true)}
           onOpenProfileModal={() => setIsPlayerProfileOpen(true)}
+          onLogout={handlePlayerLogout}
         />
       ) : (
         <GameTable
           onOpenSettings={() => setIsSettingsOpen(true)}
           onConfirmRestart={() => setIsRestartConfirmOpen(true)}
+          onConfirmLeave={() => setIsLeaveConfirmOpen(true)}
         />
       )}
 
@@ -349,6 +353,11 @@ const MainApp: React.FC = () => {
       <RestartConfirmModal
         isOpen={isRestartConfirmOpen}
         onClose={() => setIsRestartConfirmOpen(false)}
+      />
+      <LeaveConfirmModal
+        isOpen={isLeaveConfirmOpen}
+        onClose={() => setIsLeaveConfirmOpen(false)}
+        onConfirmLeave={handleBackToHome}
       />
       <FoulModal onPlayAgain={handlePlayAgain} onBackToHome={handleBackToHome} />
       <WinnerModal onPlayAgain={handlePlayAgain} onBackToHome={handleBackToHome} />

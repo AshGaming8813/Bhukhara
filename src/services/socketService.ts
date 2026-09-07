@@ -1,4 +1,5 @@
 import type { OnlineRoom, GameState, OnlineEmoteEvent } from '../types/game';
+import { syncDataWithBackendServer } from './authBackend';
 
 type RoomCallback = (room: OnlineRoom) => void;
 type GameStateCallback = (gameState: GameState) => void;
@@ -46,6 +47,8 @@ class SocketService {
             this.gameStateListeners.forEach(cb => cb(data.gameState));
           } else if (type === 'EMOTE_RECEIVED' && data?.emoteEvent) {
             this.emoteListeners.forEach(cb => cb(data.emoteEvent));
+          } else if (type === 'PLAYER_REGISTERED') {
+            syncDataWithBackendServer();
           }
         } catch (e) {
           console.error('Socket message parse error:', e);

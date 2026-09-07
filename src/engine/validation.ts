@@ -184,6 +184,15 @@ export function validateModa(
   remainingHandCard: Card,
   allOpenCombinations: Combination[]
 ): ModaValidationResult {
+  // RULE: If the single remaining card in hand is a Joker (e.g. 2 or Red/Black Joker),
+  // Moda with this Joker is ALWAYS ALLOWED and is NOT a foul!
+  if (remainingHandCard.isJoker) {
+    return {
+      isValid: true,
+      isFoul: false,
+    };
+  }
+
   const canFit = canCardFitAnyTableCombination(remainingHandCard, allOpenCombinations);
   if (canFit) {
     return {

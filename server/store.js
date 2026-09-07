@@ -101,8 +101,9 @@ class Store {
       try {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
         this.data = JSON.parse(raw);
+        this.syncAndRepairUserProfiles();
       } catch (e) {
-        console.error('Error reading db.json, reinitializing:', e);
+        console.error('[PROFILE ERROR] Error reading db.json, reinitializing:', e);
         this.initDefaultData();
       }
     } else {
@@ -116,14 +117,81 @@ class Store {
       adjustments: [],
       sessions: {},
     };
+    this.syncAndRepairUserProfiles();
     this.saveData();
+  }
+
+  syncAndRepairUserProfiles() {
+    if (!this.data || !Array.isArray(this.data.users)) {
+      this.data = { users: [...SEED_USERS], adjustments: [], sessions: {} };
+    }
+
+    let modified = false;
+    const seenEmails = new Set();
+    const cleanUsers = [];
+
+    for (const u of this.data.users) {
+      if (!u.email) continue;
+      const cleanEmail = u.email.trim().toLowerCase();
+      if (seenEmails.has(cleanEmail)) {
+        modified = true;
+        continue;
+      }
+      seenEmails.add(cleanEmail);
+
+      const userObj = { ...u };
+      if (!userObj.id) {
+        userObj.id = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        modified = true;
+      }
+      if (!userObj.player_id || !userObj.player_id.startsWith('BHUK-')) {
+        userObj.player_id = this.generateNextPlayerId();
+        modified = true;
+      }
+      if (!userObj.username) {
+        userObj.username = cleanEmail.split('@')[0];
+        modified = true;
+      }
+      if (!userObj.email) {
+        userObj.email = cleanEmail;
+        modified = true;
+      }
+      if (!userObj.role) {
+        userObj.role = 'player';
+        modified = true;
+      }
+      if (typeof userObj.coin_balance !== 'number' || isNaN(userObj.coin_balance)) {
+        userObj.coin_balance = userObj.role === 'admin' ? 0 : 1000;
+        modified = true;
+      }
+      if (!userObj.status) {
+        userObj.status = 'active';
+        modified = true;
+      }
+      if (!userObj.created_at) {
+        userObj.created_at = new Date().toISOString();
+        modified = true;
+      }
+      if (!userObj.updated_at) {
+        userObj.updated_at = new Date().toISOString();
+        modified = true;
+      }
+
+      cleanUsers.push(userObj);
+    }
+
+    this.data.users = cleanUsers;
+    if (modified) {
+      this.saveData();
+      console.log('[PROFILE REPAIR] Repaired and synchronized player profiles in DB store.');
+    }
   }
 
   saveData() {
     try {
       fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), 'utf-8');
     } catch (e) {
-      console.error('Error writing db.json:', e);
+      console.error('[PROFILE ERROR] Error writing db.json:', e);
     }
   }
 
@@ -133,17 +201,20 @@ class Store {
   }
 
   getUserById(id) {
+    if (!id) return null;
     return this.data.users.find(u => u.id === id || u.player_id === id);
   }
 
   getUserByEmail(email) {
+    if (!email) return null;
     const clean = email.toLowerCase().trim();
-    return this.data.users.find(u => u.email.toLowerCase() === clean);
+    return this.data.users.find(u => u.email && u.email.toLowerCase() === clean);
   }
 
   getUserByUsername(username) {
+    if (!username) return null;
     const clean = username.toLowerCase().trim();
-    return this.data.users.find(u => u.username.toLowerCase() === clean);
+    return this.data.users.find(u => u.username && u.username.toLowerCase() === clean);
   }
 
   generateNextPlayerId() {
@@ -161,12 +232,31 @@ class Store {
   }
 
   createUser({ username, email, password }) {
-    const existingEmail = this.getUserByEmail(email);
+    console.log(`[REGISTRATION] Creating account for: username="${username}", email="${email}"`);
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanName = (username || '').trim();
+
+    if (!cleanName || cleanName.length < 2) {
+      console.error(`[PROFILE ERROR] Username too short: "${cleanName}"`);
+      throw new Error('Username must be at least 2 characters long.');
+    }
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      console.error(`[PROFILE ERROR] Invalid email: "${cleanEmail}"`);
+      throw new Error('Valid email address is required.');
+    }
+    if (!password || password.length < 6) {
+      console.error(`[PROFILE ERROR] Password too short.`);
+      throw new Error('Password must be at least 6 characters long.');
+    }
+
+    const existingEmail = this.getUserByEmail(cleanEmail);
     if (existingEmail) {
+      console.warn(`[REGISTRATION] Account email exists: ${cleanEmail}`);
       throw new Error('An account with this email already exists.');
     }
-    const existingName = this.getUserByUsername(username);
+    const existingName = this.getUserByUsername(cleanName);
     if (existingName) {
+      console.warn(`[REGISTRATION] Username taken: ${cleanName}`);
       throw new Error('This username is already taken.');
     }
 
@@ -176,11 +266,11 @@ class Store {
     const newUser = {
       id: newUserId,
       player_id: newPlayerId,
-      username: username.trim(),
-      email: email.trim().toLowerCase(),
+      username: cleanName,
+      email: cleanEmail,
       password_hash: hashPassword(password),
       role: 'player',
-      coin_balance: 0,
+      coin_balance: 1000,
       status: 'active',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -188,26 +278,85 @@ class Store {
 
     this.data.users.push(newUser);
     this.saveData();
-    return newUser;
+
+    console.log(`[PROFILE CREATE] Success! Registered player ${newUser.username} (${newUser.player_id}) -> User ID: ${newUser.id}`);
+
+    const { password_hash, ...safeUser } = newUser;
+    return safeUser;
+  }
+
+  syncClientUser(clientUser) {
+    if (!clientUser || !clientUser.email) return null;
+    const cleanEmail = clientUser.email.trim().toLowerCase();
+    let existing = this.getUserByEmail(cleanEmail);
+
+    if (existing) {
+      let updated = false;
+      if (!existing.player_id && clientUser.player_id) {
+        existing.player_id = clientUser.player_id;
+        updated = true;
+      }
+      if (updated) {
+        existing.updated_at = new Date().toISOString();
+        this.saveData();
+      }
+      const { password_hash, ...safe } = existing;
+      return safe;
+    } else {
+      const newPlayerId = clientUser.player_id && clientUser.player_id.startsWith('BHUK-')
+        ? clientUser.player_id
+        : this.generateNextPlayerId();
+      const newUserId = clientUser.id || `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+
+      const newUser = {
+        id: newUserId,
+        player_id: newPlayerId,
+        username: clientUser.username || cleanEmail.split('@')[0],
+        email: cleanEmail,
+        password_hash: clientUser.password_hash || hashPassword('player123'),
+        role: clientUser.role || 'player',
+        coin_balance: typeof clientUser.coin_balance === 'number' ? clientUser.coin_balance : 1000,
+        status: clientUser.status || 'active',
+        created_at: clientUser.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      this.data.users.push(newUser);
+      this.saveData();
+      console.log(`[PROFILE SYNC] Synced client user to server DB: ${newUser.username} (${newUser.player_id}) -> ${newUser.email}`);
+      const { password_hash, ...safe } = newUser;
+      return safe;
+    }
   }
 
   authenticateUser(loginId, password) {
+    console.log(`[PROFILE RESULT] Authenticating login attempt for: "${loginId}"`);
     const clean = loginId.trim().toLowerCase();
-    const user = this.data.users.find(
-      u => u.email.toLowerCase() === clean || u.username.toLowerCase() === clean || u.player_id.toLowerCase() === clean
+    let user = this.data.users.find(
+      u => u.email.toLowerCase() === clean || u.username.toLowerCase() === clean || (u.player_id && u.player_id.toLowerCase() === clean)
     );
 
     if (!user) {
+      console.warn(`[PROFILE ERROR] Authentication failed: User "${loginId}" not found.`);
       throw new Error('User not found. Please check your username/email.');
     }
 
     if (user.status === 'inactive') {
+      console.warn(`[PROFILE ERROR] Authentication failed: User "${loginId}" is inactive.`);
       throw new Error('Account is suspended. Contact administrator.');
     }
 
     const inputHash = hashPassword(password);
     if (user.password_hash !== inputHash) {
+      console.warn(`[PROFILE ERROR] Incorrect password for "${loginId}".`);
       throw new Error('Incorrect password.');
+    }
+
+    // Auto-repair player_id if missing
+    if (!user.player_id || !user.player_id.startsWith('BHUK-')) {
+      user.player_id = this.generateNextPlayerId();
+      user.updated_at = new Date().toISOString();
+      this.saveData();
     }
 
     const sessionToken = `token_${user.id}_${Date.now()}`;
@@ -224,7 +373,9 @@ class Store {
     this.data.sessions[sessionToken] = session;
     this.saveData();
 
-    return { session, user };
+    console.log(`[PROFILE RESULT] User authenticated successfully: ${user.username} (${user.player_id})`);
+    const { password_hash, ...safeUser } = user;
+    return { session, user: safeUser };
   }
 
   getSession(token) {

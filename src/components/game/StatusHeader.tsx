@@ -5,11 +5,13 @@ import { Settings, LogOut, Wifi, Users, Volume2, VolumeX, RotateCw } from 'lucid
 interface StatusHeaderProps {
   onOpenSettings: () => void;
   onConfirmRestart: () => void;
+  onConfirmLeave?: () => void;
 }
 
 export const StatusHeader: React.FC<StatusHeaderProps> = ({
   onOpenSettings,
   onConfirmRestart,
+  onConfirmLeave,
 }) => {
   const { state, toggleSound } = useGame();
 
@@ -71,7 +73,7 @@ export const StatusHeader: React.FC<StatusHeaderProps> = ({
           <Settings size={16} />
         </button>
 
-        <button className="btn-leave-match" onClick={onConfirmRestart} title="Leave / Restart Match">
+        <button className="btn-leave-match" onClick={onConfirmLeave || onConfirmRestart} title="Leave Match & Back to Home">
           <LogOut size={14} /> Leave
         </button>
       </div>

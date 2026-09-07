@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
 import { loadGameState } from '../../utils/storage';
-import { Play, Users, BookOpen, Settings as SettingsIcon, RotateCcw, Globe, LogIn, Coins } from 'lucide-react';
+import { Play, Users, BookOpen, Settings as SettingsIcon, RotateCcw, Globe, LogIn, Coins, LogOut } from 'lucide-react';
 import type { BazziMode } from '../../types/game';
 import type { User } from '../../types/auth';
 
@@ -13,6 +13,7 @@ interface HomeScreenProps {
   onOpenOnlineMenu: () => void;
   onOpenAuthModal: () => void;
   onOpenProfileModal: () => void;
+  onLogout?: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -23,6 +24,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenOnlineMenu,
   onOpenAuthModal,
   onOpenProfileModal,
+  onLogout,
 }) => {
   const { startNewGame, continueSavedGame } = useGame();
   const [hasSavedGame, setHasSavedGame] = useState(false);
@@ -63,19 +65,46 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
       <div className="home-content">
         {/* Top Header Player Info / Auth Bar */}
-        <div className="home-user-auth-bar">
+        <div className="home-user-auth-bar" style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
           {currentUser ? (
-            <div className="player-account-badge" onClick={onOpenProfileModal}>
-              <div className="avatar-mini">👑</div>
-              <div className="user-text-info">
-                <span className="user-name-text">{currentUser.username}</span>
-                <span className="user-id-text"><code>{currentUser.player_id}</code></span>
+            <>
+              <div className="player-account-badge" onClick={onOpenProfileModal} style={{ cursor: 'pointer' }}>
+                <div className="avatar-mini">👑</div>
+                <div className="user-text-info">
+                  <span className="user-name-text">{currentUser.username}</span>
+                  <span className="user-id-text"><code>{currentUser.player_id}</code></span>
+                </div>
+                <div className="user-coin-tag">
+                  <Coins size={14} />
+                  <span>🪙 {currentUser.coin_balance.toLocaleString()}</span>
+                </div>
               </div>
-              <div className="user-coin-tag">
-                <Coins size={14} />
-                <span>🪙 {currentUser.coin_balance.toLocaleString()}</span>
-              </div>
-            </div>
+
+              {onLogout && (
+                <button
+                  className="btn-logout-home"
+                  onClick={onLogout}
+                  title="Logout Account"
+                  style={{
+                    background: 'rgba(231, 76, 60, 0.25)',
+                    border: '1.5px solid #e74c3c',
+                    color: '#ff7675',
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    fontWeight: 800,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 10px rgba(231,76,60,0.3)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <LogOut size={16} /> LOGOUT
+                </button>
+              )}
+            </>
           ) : (
             <button className="btn-auth-trigger" onClick={onOpenAuthModal}>
               <LogIn size={16} /> LOGIN / REGISTER

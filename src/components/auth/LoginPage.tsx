@@ -38,13 +38,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
 
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const res = authBackend.registerPlayer(username, email, password, confirmPassword);
+    try {
+      const res = await authBackend.registerPlayerAsync(username, email, password, confirmPassword);
       setIsSubmitting(false);
 
       if (res.success && res.session) {
@@ -52,7 +52,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       } else {
         setErrorMsg(res.error || 'Registration failed.');
       }
-    }, 300);
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setErrorMsg(err?.message || 'Registration error occurred.');
+    }
   };
 
   const handleForgot = (e: React.FormEvent) => {

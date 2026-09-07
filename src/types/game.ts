@@ -47,6 +47,7 @@ export interface Player {
 
 export type GameMode = '2P' | '4P';
 export type BazziMode = 1 | 2;
+export type AIDifficulty = 'EASY' | 'MEDIUM' | 'HARD' | 'MASTER';
 
 export type GamePhase = 
   | 'DEAL'
@@ -117,6 +118,7 @@ export interface GameState {
   pickedFromOpenDeckThisTurn?: boolean;
   hasMeldedThisTurn?: boolean;
   claimedBhukharaThisTurn?: boolean;
+  aiDifficulty?: AIDifficulty;
 }
 
 /* Real-Time Online Multiplayer Room System Types */

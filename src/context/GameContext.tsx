@@ -8,6 +8,7 @@ import type {
   Player,
   BazziResult,
   OnlineEmoteEvent,
+  AIDifficulty,
 } from '../types/game';
 import { createDeck, dealCards } from '../engine/deck';
 import {
@@ -20,7 +21,7 @@ import {
   sortCardsBySuit,
 } from '../engine/validation';
 import { calculateBazziScores } from '../engine/scoring';
-import { getAIDecision } from '../engine/ai';
+import { getAIDecision, selectSmartAIDiscardCard, getPublicSeenCardCounts } from '../engine/ai';
 import { soundEngine } from '../engine/sound';
 import { saveGameState, loadGameState, clearGameState } from '../utils/storage';
 import confetti from 'canvas-confetti';
@@ -47,6 +48,7 @@ interface GameContextType {
   resetToHome: () => void;
   toggleSound: () => void;
   toggleMusic: () => void;
+  setAIDifficulty: (difficulty: AIDifficulty) => void;
   setOnlineGameState: (newState: GameState) => void;
   sendOnlineEmote: (emote: string) => void;
 }
@@ -606,6 +608,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let nextState: GameState = {
         ...prev,
         players: updatedPlayers,
+        hasMeldedThisTurn: true,
         combinations: {
           ...(prev.combinations || {}),
           [currentTeamKey]: updatedCombs,
@@ -746,6 +749,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let nextState: GameState = {
         ...prev,
         players: updatedPlayers,
+        hasMeldedThisTurn: true,
         combinations: {
           ...(prev.combinations || {}),
           [currentTeamKey]: [...teamCombs, newComb],
@@ -879,6 +883,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let nextState: GameState = {
         ...prev,
         players: updatedPlayers,
+        hasMeldedThisTurn: true,
         combinations: {
           ...(prev.combinations || {}),
           [currentTeamKey]: [...teamCombs, newComb],
@@ -1244,12 +1249,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState(prev => {
       const activeId = prev.playerOrder[prev.currentTurnIndex];
       const activePlayer = prev.players[activeId];
-      const activeName = activePlayer ? activePlayer.name : activeId;
+      if (!activePlayer) return prev;
+      const activeName = activePlayer.name || activeId;
 
-      // RULE 1: If player claimed Bhukhara but did NOT meld any card, revert Bhukhara pile & end turn
-      if ((prev.claimedBhukharaThisTurn || activePlayer?.justClaimedBhukharaThisTurn) && !prev.hasMeldedThisTurn) {
+      const hasMelded = prev.hasMeldedThisTurn || (activePlayer.justClaimedBhukharaThisTurn && activePlayer.hand.length < 13);
+
+      // RULE 1: If player claimed Bhukhara but did NOT meld/play any card, revert Bhukhara pile & end turn
+      if ((prev.claimedBhukharaThisTurn || activePlayer.justClaimedBhukharaThisTurn) && !hasMelded) {
         soundEngine.playCardShuffle();
-        const bhukharaRevertedPile = [...(activePlayer?.hand || [])];
+        const bhukharaRevertedPile = [...(activePlayer.hand || [])];
         const restoredPlayerHand: Card[] = [];
 
         const updatedPlayers = {
@@ -1259,7 +1267,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             hand: restoredPlayerHand,
             hasClaimedBhukhara: false,
             justClaimedBhukharaThisTurn: false,
-            modaCount: Math.max(0, ((activePlayer?.modaCount || 1) - 1)),
+            modaCount: Math.max(0, activePlayer.modaCount - 1),
           },
         };
 
@@ -1280,12 +1288,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return nextState;
       }
 
-      // Valid Say Hello after melding cards
+      // Valid Say Hello after melding cards: Preserve player's remaining hand cards INTACT!
       const updatedPlayers = {
         ...prev.players,
         [activeId]: {
           ...activePlayer,
           justClaimedBhukharaThisTurn: false,
+          // hand remains intact with activePlayer.hand
         },
       };
 
@@ -1293,7 +1302,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...prev,
         players: updatedPlayers,
         claimedBhukharaThisTurn: false,
-        lastAction: `👋 ${activeName} claimed Bhukhara and said HELLO! Turn passed.`,
+        hasMeldedThisTurn: false,
+        pickedFromOpenDeckThisTurn: false,
+        lastAction: `👋 ${activeName} claimed Bhukhara cards, melded combinations, and said HELLO! Turn passed to next player.`,
         version: (prev.version || 1) + 1,
         updatedAt: Date.now(),
       };
@@ -1317,6 +1328,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState(prev => ({ ...prev, musicEnabled: !prev.musicEnabled }));
   }, []);
 
+  const setAIDifficulty = useCallback((difficulty: any) => {
+    setState(prev => ({ ...prev, aiDifficulty: difficulty }));
+  }, []);
+
   useEffect(() => {
     if (state.phase === 'GAME_OVER' || state.phase === 'FOUL' || state.phase === 'DEAL' || state.isOnlineMode) return;
 
@@ -1324,24 +1339,32 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const activePlayer = state.players[activeId];
 
     if (activePlayer && !activePlayer.isHuman) {
-      const timer = setTimeout(() => {
-        const teamKey = getTeamKey(activePlayer, state.gameMode);
-        const teamCombs = (state.combinations && state.combinations[teamKey]) ? state.combinations[teamKey] : [];
-        const allCombs: Combination[] = [];
-        if (state.combinations) {
-          Object.values(state.combinations).forEach(list => {
-            if (Array.isArray(list)) allCombs.push(...list);
-          });
-        }
+      const teamKey = getTeamKey(activePlayer, state.gameMode);
+      const teamCombs = (state.combinations && state.combinations[teamKey]) ? state.combinations[teamKey] : [];
+      const allCombs: Combination[] = [];
+      if (state.combinations) {
+        Object.values(state.combinations).forEach(list => {
+          if (Array.isArray(list)) allCombs.push(...list);
+        });
+      }
 
-        const aiDecision = getAIDecision(
-          activePlayer,
-          state.hasDrawnThisTurn,
-          state.mustDiscard,
-          teamCombs,
-          allCombs,
-          state.openDeck
-        );
+      const aiDecision = getAIDecision(
+        activePlayer,
+        state.hasDrawnThisTurn,
+        state.mustDiscard,
+        teamCombs,
+        allCombs,
+        state.openDeck,
+        state,
+        state.aiDifficulty || 'MASTER'
+      );
+
+      const delay = aiDecision.thinkingDelayMs || 1200;
+
+      const timer = setTimeout(() => {
+        if (aiDecision.reasonLog) {
+          console.log(`🤖 [AI ${state.aiDifficulty || 'MASTER'} TURN] Player:${activePlayer.name} (${activeId}) -> Action:${aiDecision.action} | Log:${aiDecision.reasonLog}`);
+        }
 
         if (aiDecision.action === 'DRAW_CLOSE') {
           drawFromCloseDeck();
@@ -1349,6 +1372,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           takeFromOpenDeck(aiDecision.openCardIndex);
         } else if (aiDecision.action === 'MODA') {
           attemptModa();
+        } else if (aiDecision.action === 'HELLO') {
+          sayHello();
         } else if (aiDecision.action === 'OPEN_COMBINATIONS') {
           if (aiDecision.cardsToMeld && aiDecision.cardsToMeld.length > 0) {
             const meld = aiDecision.cardsToMeld[0];
@@ -1362,9 +1387,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 openTriplicateFromSelection();
               }
             }
+          } else if (aiDecision.cardsToAdd && aiDecision.cardsToAdd.length > 0) {
+            const addTarget = aiDecision.cardsToAdd[0];
+            setSelectedCardIds([addTarget.card.id]);
+            addSelectionToCombination(addTarget.combinationId);
           } else {
             if (activePlayer.hand.length > 0) {
-              const dCard = activePlayer.hand[0];
+              const dCard = selectSmartAIDiscardCard(
+                activePlayer.hand,
+                activePlayer.hasOpenedPureSeries,
+                teamCombs,
+                allCombs,
+                getPublicSeenCardCounts(allCombs, state.openDeck, activePlayer.hand),
+                state.aiDifficulty || 'MASTER'
+              );
               setSelectedCardIds([dCard.id]);
               discardSelectedCard();
             }
@@ -1376,7 +1412,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             discardSelectedCard();
           }
         }
-      }, 1000);
+      }, delay);
 
       return () => clearTimeout(timer);
     }
@@ -1421,6 +1457,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetToHome,
         toggleSound,
         toggleMusic,
+        setAIDifficulty,
         setOnlineGameState,
         sendOnlineEmote,
       }}
