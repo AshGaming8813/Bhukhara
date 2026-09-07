@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGame } from '../../context/GameContext';
-import { Settings, LogOut, Wifi, Users, Volume2, VolumeX } from 'lucide-react';
+import { Settings, LogOut, Wifi, Users, Volume2, VolumeX, RotateCw } from 'lucide-react';
 
 interface StatusHeaderProps {
   onOpenSettings: () => void;
@@ -13,7 +13,22 @@ export const StatusHeader: React.FC<StatusHeaderProps> = ({
 }) => {
   const { state, toggleSound } = useGame();
 
-
+  const handleToggleRotateFullscreen = () => {
+    try {
+      if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+        if (window.screen && (window.screen as any).orientation && (window.screen as any).orientation.lock) {
+          (window.screen as any).orientation.lock('landscape').catch(() => {});
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    } catch (e) {}
+  };
 
   return (
     <div className="status-header mockup-status-header">
@@ -43,6 +58,10 @@ export const StatusHeader: React.FC<StatusHeaderProps> = ({
           <Users size={14} />
           <span>{state?.gameMode === '4P' ? '4 Players' : '2 Players'}</span>
         </div>
+
+        <button className="header-icon-btn" onClick={handleToggleRotateFullscreen} title="Rotate Landscape / Fullscreen">
+          <RotateCw size={16} />
+        </button>
 
         <button className="header-icon-btn" onClick={toggleSound} title="Toggle Sound">
           {state?.soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
