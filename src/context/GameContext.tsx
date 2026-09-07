@@ -524,247 +524,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [syncOnlineState]);
 
-  const openSeriesFromSelection = useCallback((): { success: boolean; message: string } => {
-    if (state.isOnlineMode && state.localPlayerId) {
-      const currentTurnSlot = state.playerOrder[state.currentTurnIndex];
-      if (state.localPlayerId !== currentTurnSlot) {
-        console.warn(`[OPEN SERIES REJECTED] Not your turn. localPlayerId=${state.localPlayerId}, currentTurnSlot=${currentTurnSlot}`);
-        return { success: false, message: "It is not your turn!" };
-      }
-    }
-
-    if (!state.hasDrawnThisTurn) {
-      console.warn(`[OPEN SERIES REJECTED] Must draw a card before opening.`);
-      return { success: false, message: "You must draw a card before opening combinations." };
-    }
-
-    const activeId = state.playerOrder[state.currentTurnIndex];
-    const activePlayer = state.players[activeId];
-    if (!activePlayer) {
-      return { success: false, message: "Active player error." };
-    }
-
-    const selectedCards = activePlayer.hand.filter(c => selectedCardIds.includes(c.id));
-
-    if (selectedCards.length < 3 || selectedCards.length > 7) {
-      console.warn(`[OPEN SERIES REJECTED] Invalid card count: ${selectedCards.length}`);
-      return { success: false, message: "Series requires between 3 and 7 cards." };
-    }
-
-    if (!activePlayer.hasOpenedPureSeries) {
-      if (!isValidPureSeries(selectedCards)) {
-        console.warn(`[OPEN SERIES REJECTED] First opening must be pure series.`);
-        return {
-          success: false,
-          message: "Initial opening MUST be a Pure Same-Suit Series (3–7 consecutive cards of same suit without Jokers).",
-        };
-      }
-    } else {
-      if (!isValidSeries(selectedCards)) {
-        console.warn(`[OPEN SERIES REJECTED] Invalid series combination.`);
-        return { success: false, message: "Invalid Series combination (consecutive ranks, same suit, max 1 Joker)." };
-      }
-    }
-
-    soundEngine.playMeldOpen();
-
-    const teamKey = getTeamKey(activePlayer, state.gameMode);
-    const isPure = isValidPureSeries(selectedCards);
-    const newComb: Combination = {
-      id: `comb_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      type: isPure ? 'PURE_SERIES' : 'SERIES',
-      cards: sortCardsByRank(selectedCards),
-      suit: selectedCards.find(c => !c.isJoker)?.suit || selectedCards[0].suit,
-      rank: null,
-      ownerId: teamKey,
-      points: 0,
-    };
-
-    console.log(`[OPEN SERIES REQUEST] roomCode: ${state.onlineRoomCode} sessionId: ${state.gameSessionId} playerId: ${activeId} selectedCards:`, selectedCards.map(c => `${c.rank}${c.suit}`));
-
-    setSelectedCardIds([]);
-
-    setState(prev => {
-      const currentActiveId = prev.playerOrder[prev.currentTurnIndex];
-      const currentActiveP = prev.players[currentActiveId];
-      if (!currentActiveP) return prev;
-
-      const remainingHand = currentActiveP.hand.filter(c => !selectedCards.some(sc => sc.id === c.id));
-      const currentTeamKey = getTeamKey(currentActiveP, prev.gameMode);
-      const teamCombs = (prev.combinations && prev.combinations[currentTeamKey]) ? prev.combinations[currentTeamKey] : [];
-
-      const updatedPlayers = { ...prev.players };
-      Object.keys(updatedPlayers).forEach(pid => {
-        const p = updatedPlayers[pid];
-        if (p && getTeamKey(p, prev.gameMode) === currentTeamKey) {
-          updatedPlayers[pid] = { ...p, hasOpenedPureSeries: true };
-        }
-      });
-
-      if (updatedPlayers[currentActiveId]) {
-        updatedPlayers[currentActiveId] = {
-          ...updatedPlayers[currentActiveId],
-          hand: remainingHand,
-          hasOpenedPureSeries: true,
-        };
-      }
-
-      let nextState: GameState = {
-        ...prev,
-        players: updatedPlayers,
-        combinations: {
-          ...(prev.combinations || {}),
-          [currentTeamKey]: [...teamCombs, newComb],
-        },
-        lastAction: `${currentActiveP.name} opened a Series (${selectedCards.length} cards).`,
-        version: (prev.version || 1) + 1,
-        updatedAt: Date.now(),
-      };
-
-      if (remainingHand.length === 0) {
-        const nextIdx = (prev.currentTurnIndex + 1) % prev.playerOrder.length;
-        const nextPlayerId = prev.playerOrder[nextIdx];
-        const nextPlayer = prev.players[nextPlayerId];
-        nextState = {
-          ...nextState,
-          currentTurnIndex: nextIdx,
-          currentTurnPlayerId: nextPlayerId,
-          hasDrawnThisTurn: false,
-          mustDiscard: false,
-          phase: 'DRAW',
-          lastAction: `${currentActiveP.name}'s hand is empty (0 cards). Waiting for next turn. Turn moved to ${nextPlayer ? nextPlayer.name : nextPlayerId}.`,
-          version: (nextState.version || 1) + 1,
-          updatedAt: Date.now(),
-        };
-      }
-
-      console.log(`[OPEN SERIES] SUCCESS! version:${nextState.version} room:${nextState.onlineRoomCode} comb:${newComb.id} type:${newComb.type}`);
-      console.log(`[REALTIME BROADCAST] roomCode:${nextState.onlineRoomCode} version:${nextState.version}`);
-
-      syncOnlineState(nextState);
-      return nextState;
-    });
-
-    return { success: true, message: 'Series opened successfully!' };
-  }, [state, selectedCardIds, syncOnlineState]);
-
-  const openTriplicateFromSelection = useCallback((): { success: boolean; message: string } => {
-    if (state.isOnlineMode && state.localPlayerId) {
-      const currentTurnSlot = state.playerOrder[state.currentTurnIndex];
-      if (state.localPlayerId !== currentTurnSlot) {
-        console.warn(`[OPEN TRIPLICATE REJECTED] Not your turn.`);
-        return { success: false, message: "It is not your turn!" };
-      }
-    }
-
-    if (!state.hasDrawnThisTurn) {
-      console.warn(`[OPEN TRIPLICATE REJECTED] Must draw a card before opening.`);
-      return { success: false, message: "You must draw a card before opening combinations." };
-    }
-
-    const activeId = state.playerOrder[state.currentTurnIndex];
-    const activePlayer = state.players[activeId];
-    if (!activePlayer) {
-      return { success: false, message: "Active player error." };
-    }
-
-    if (!activePlayer.hasOpenedPureSeries) {
-      console.warn(`[OPEN TRIPLICATE REJECTED] Must open pure series first.`);
-      return {
-        success: false,
-        message: "You must first open a Pure Same-Suit Series before creating Triplicates!",
-      };
-    }
-
-    const selectedCards = activePlayer.hand.filter(c => selectedCardIds.includes(c.id));
-
-    if (selectedCards.length < 3 || selectedCards.length > 7) {
-      console.warn(`[OPEN TRIPLICATE REJECTED] Invalid card count: ${selectedCards.length}`);
-      return { success: false, message: "Triplicate requires between 3 and 7 cards." };
-    }
-
-    if (!isValidTriplicate(selectedCards)) {
-      console.warn(`[OPEN TRIPLICATE REJECTED] Invalid triplicate combination.`);
-      return { success: false, message: "Invalid Triplicate combination (3-7 cards of same rank, max 1 Joker)." };
-    }
-
-    soundEngine.playMeldOpen();
-
-    const teamKey = getTeamKey(activePlayer, state.gameMode);
-    const nonJoker = selectedCards.find(c => !c.isJoker);
-
-    const newComb: Combination = {
-      id: `comb_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      type: 'TRIPLICATE',
-      cards: selectedCards,
-      suit: null,
-      rank: nonJoker?.rank || selectedCards[0].rank,
-      ownerId: teamKey,
-      points: 0,
-    };
-
-    console.log(`[OPEN TRIPLICATE REQUEST] roomCode: ${state.onlineRoomCode} sessionId: ${state.gameSessionId} playerId: ${activeId} selectedCards:`, selectedCards.map(c => `${c.rank}${c.suit}`));
-
-    setSelectedCardIds([]);
-
-    setState(prev => {
-      const currentActiveId = prev.playerOrder[prev.currentTurnIndex];
-      const currentActiveP = prev.players[currentActiveId];
-      if (!currentActiveP) return prev;
-
-      const remainingHand = currentActiveP.hand.filter(c => !selectedCards.some(sc => sc.id === c.id));
-      const currentTeamKey = getTeamKey(currentActiveP, prev.gameMode);
-      const teamCombs = (prev.combinations && prev.combinations[currentTeamKey]) ? prev.combinations[currentTeamKey] : [];
-
-      const updatedPlayers = {
-        ...prev.players,
-      };
-      if (updatedPlayers[currentActiveId]) {
-        updatedPlayers[currentActiveId] = {
-          ...updatedPlayers[currentActiveId],
-          hand: remainingHand,
-        };
-      }
-
-      let nextState: GameState = {
-        ...prev,
-        players: updatedPlayers,
-        combinations: {
-          ...(prev.combinations || {}),
-          [currentTeamKey]: [...teamCombs, newComb],
-        },
-        lastAction: `${currentActiveP.name} opened a Triplicate (${selectedCards.length} cards).`,
-        version: (prev.version || 1) + 1,
-        updatedAt: Date.now(),
-      };
-
-      if (remainingHand.length === 0) {
-        const nextIdx = (prev.currentTurnIndex + 1) % prev.playerOrder.length;
-        const nextPlayerId = prev.playerOrder[nextIdx];
-        const nextPlayer = prev.players[nextPlayerId];
-        nextState = {
-          ...nextState,
-          currentTurnIndex: nextIdx,
-          currentTurnPlayerId: nextPlayerId,
-          hasDrawnThisTurn: false,
-          mustDiscard: false,
-          phase: 'DRAW',
-          lastAction: `${currentActiveP.name}'s hand is empty (0 cards). Waiting for next turn. Turn moved to ${nextPlayer ? nextPlayer.name : nextPlayerId}.`,
-          version: (nextState.version || 1) + 1,
-          updatedAt: Date.now(),
-        };
-      }
-
-      console.log(`[OPEN TRIPLICATE] SUCCESS! version:${nextState.version} room:${nextState.onlineRoomCode} comb:${newComb.id}`);
-      console.log(`[REALTIME BROADCAST] roomCode:${nextState.onlineRoomCode} version:${nextState.version}`);
-
-      syncOnlineState(nextState);
-      return nextState;
-    });
-
-    return { success: true, message: 'Triplicate opened successfully!' };
-  }, [state, selectedCardIds, syncOnlineState]);
-
   const addSelectionToCombination = useCallback((targetCombId: string): { success: boolean; message: string } => {
     if (state.isOnlineMode && state.localPlayerId) {
       const currentTurnSlot = state.playerOrder[state.currentTurnIndex];
@@ -880,8 +639,281 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return nextState;
     });
 
-    return { success: true, message: `${selectedCards.length} card(s) added successfully!` };
+    return { success: true, message: 'Card(s) added to combination!' };
   }, [state, selectedCardIds, syncOnlineState]);
+
+  const openSeriesFromSelection = useCallback((): { success: boolean; message: string } => {
+    if (state.isOnlineMode && state.localPlayerId) {
+      const currentTurnSlot = state.playerOrder[state.currentTurnIndex];
+      if (state.localPlayerId !== currentTurnSlot) {
+        console.warn(`[OPEN SERIES REJECTED] Not your turn. localPlayerId=${state.localPlayerId}, currentTurnSlot=${currentTurnSlot}`);
+        return { success: false, message: "It is not your turn!" };
+      }
+    }
+
+    if (!state.hasDrawnThisTurn) {
+      console.warn(`[OPEN SERIES REJECTED] Must draw a card before opening.`);
+      return { success: false, message: "You must draw a card before opening combinations." };
+    }
+
+    const activeId = state.playerOrder[state.currentTurnIndex];
+    const activePlayer = state.players[activeId];
+    if (!activePlayer) {
+      return { success: false, message: "Active player error." };
+    }
+
+    const selectedCards = activePlayer.hand.filter(c => selectedCardIds.includes(c.id));
+    if (selectedCards.length === 0) {
+      return { success: false, message: "Please select card(s) to open or add to Series." };
+    }
+
+    const teamKey = getTeamKey(activePlayer, state.gameMode);
+    const existingCombs = (state.combinations && state.combinations[teamKey]) ? state.combinations[teamKey] : [];
+
+    // AUTO-ATTACH: If player already opened Pure Series, check if selected cards fit an EXISTING Series on team board
+    if (activePlayer.hasOpenedPureSeries && existingCombs.length > 0) {
+      const matchingSeries = existingCombs.find(comb =>
+        (comb.type === 'PURE_SERIES' || comb.type === 'SERIES') && canCardsFitCombination(selectedCards, comb)
+      );
+
+      if (matchingSeries) {
+        return addSelectionToCombination(matchingSeries.id);
+      }
+    }
+
+    if (selectedCards.length < 3 || selectedCards.length > 7) {
+      console.warn(`[OPEN SERIES REJECTED] Invalid card count: ${selectedCards.length}`);
+      return { success: false, message: "New Series requires 3 to 7 cards (or select cards fitting an existing open Series)." };
+    }
+
+    if (!activePlayer.hasOpenedPureSeries) {
+      if (!isValidPureSeries(selectedCards)) {
+        console.warn(`[OPEN SERIES REJECTED] First opening must be pure series.`);
+        return {
+          success: false,
+          message: "Initial opening MUST be a Pure Same-Suit Series (3–7 consecutive cards of same suit without Jokers).",
+        };
+      }
+    } else {
+      if (!isValidSeries(selectedCards)) {
+        console.warn(`[OPEN SERIES REJECTED] Invalid series combination.`);
+        return { success: false, message: "Invalid Series combination (consecutive ranks, same suit, max 1 Joker)." };
+      }
+    }
+
+    soundEngine.playMeldOpen();
+
+    const isPure = isValidPureSeries(selectedCards);
+    const newComb: Combination = {
+      id: `comb_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      type: isPure ? 'PURE_SERIES' : 'SERIES',
+      cards: sortCardsByRank(selectedCards),
+      suit: selectedCards.find(c => !c.isJoker)?.suit || selectedCards[0].suit,
+      rank: null,
+      ownerId: teamKey,
+      points: 0,
+    };
+
+    console.log(`[OPEN SERIES REQUEST] roomCode: ${state.onlineRoomCode} sessionId: ${state.gameSessionId} playerId: ${activeId} selectedCards:`, selectedCards.map(c => `${c.rank}${c.suit}`));
+
+    setSelectedCardIds([]);
+
+    setState(prev => {
+      const currentActiveId = prev.playerOrder[prev.currentTurnIndex];
+      const currentActiveP = prev.players[currentActiveId];
+      if (!currentActiveP) return prev;
+
+      const remainingHand = currentActiveP.hand.filter(c => !selectedCards.some(sc => sc.id === c.id));
+      const currentTeamKey = getTeamKey(currentActiveP, prev.gameMode);
+      const teamCombs = (prev.combinations && prev.combinations[currentTeamKey]) ? prev.combinations[currentTeamKey] : [];
+
+      const updatedPlayers = { ...prev.players };
+      Object.keys(updatedPlayers).forEach(pid => {
+        const p = updatedPlayers[pid];
+        if (p && getTeamKey(p, prev.gameMode) === currentTeamKey) {
+          updatedPlayers[pid] = { ...p, hasOpenedPureSeries: true };
+        }
+      });
+
+      if (updatedPlayers[currentActiveId]) {
+        updatedPlayers[currentActiveId] = {
+          ...updatedPlayers[currentActiveId],
+          hand: remainingHand,
+          hasOpenedPureSeries: true,
+        };
+      }
+
+      let nextState: GameState = {
+        ...prev,
+        players: updatedPlayers,
+        combinations: {
+          ...(prev.combinations || {}),
+          [currentTeamKey]: [...teamCombs, newComb],
+        },
+        lastAction: `${currentActiveP.name} opened a Series (${selectedCards.length} cards).`,
+        version: (prev.version || 1) + 1,
+        updatedAt: Date.now(),
+      };
+
+      if (remainingHand.length === 0) {
+        const nextIdx = (prev.currentTurnIndex + 1) % prev.playerOrder.length;
+        const nextPlayerId = prev.playerOrder[nextIdx];
+        const nextPlayer = prev.players[nextPlayerId];
+        nextState = {
+          ...nextState,
+          currentTurnIndex: nextIdx,
+          currentTurnPlayerId: nextPlayerId,
+          hasDrawnThisTurn: false,
+          mustDiscard: false,
+          phase: 'DRAW',
+          lastAction: `${currentActiveP.name}'s hand is empty (0 cards). Waiting for next turn. Turn moved to ${nextPlayer ? nextPlayer.name : nextPlayerId}.`,
+          version: (nextState.version || 1) + 1,
+          updatedAt: Date.now(),
+        };
+      }
+
+      console.log(`[OPEN SERIES] SUCCESS! version:${nextState.version} room:${nextState.onlineRoomCode} comb:${newComb.id} type:${newComb.type}`);
+      console.log(`[REALTIME BROADCAST] roomCode:${nextState.onlineRoomCode} version:${nextState.version}`);
+
+      syncOnlineState(nextState);
+      return nextState;
+    });
+
+    return { success: true, message: 'Series opened successfully!' };
+  }, [state, selectedCardIds, addSelectionToCombination, syncOnlineState]);
+
+  const openTriplicateFromSelection = useCallback((): { success: boolean; message: string } => {
+    if (state.isOnlineMode && state.localPlayerId) {
+      const currentTurnSlot = state.playerOrder[state.currentTurnIndex];
+      if (state.localPlayerId !== currentTurnSlot) {
+        console.warn(`[OPEN TRIPLICATE REJECTED] Not your turn.`);
+        return { success: false, message: "It is not your turn!" };
+      }
+    }
+
+    if (!state.hasDrawnThisTurn) {
+      console.warn(`[OPEN TRIPLICATE REJECTED] Must draw a card before opening.`);
+      return { success: false, message: "You must draw a card before opening combinations." };
+    }
+
+    const activeId = state.playerOrder[state.currentTurnIndex];
+    const activePlayer = state.players[activeId];
+    if (!activePlayer) {
+      return { success: false, message: "Active player error." };
+    }
+
+    if (!activePlayer.hasOpenedPureSeries) {
+      console.warn(`[OPEN TRIPLICATE REJECTED] Must open pure series first.`);
+      return {
+        success: false,
+        message: "You must first open a Pure Same-Suit Series before creating Triplicates!",
+      };
+    }
+
+    const selectedCards = activePlayer.hand.filter(c => selectedCardIds.includes(c.id));
+    if (selectedCards.length === 0) {
+      return { success: false, message: "Please select card(s) to open or add to Triplicate." };
+    }
+
+    const teamKey = getTeamKey(activePlayer, state.gameMode);
+    const existingCombs = (state.combinations && state.combinations[teamKey]) ? state.combinations[teamKey] : [];
+
+    // AUTO-ATTACH: Check if selected cards fit into an EXISTING Triplicate on team board
+    if (activePlayer.hasOpenedPureSeries && existingCombs.length > 0) {
+      const matchingTriplicate = existingCombs.find(comb =>
+        comb.type === 'TRIPLICATE' && canCardsFitCombination(selectedCards, comb)
+      );
+
+      if (matchingTriplicate) {
+        return addSelectionToCombination(matchingTriplicate.id);
+      }
+    }
+
+    if (selectedCards.length < 3 || selectedCards.length > 7) {
+      console.warn(`[OPEN TRIPLICATE REJECTED] Invalid card count: ${selectedCards.length}`);
+      return { success: false, message: "New Triplicate requires 3 to 7 cards (or select cards fitting an existing open Triplicate)." };
+    }
+
+    if (!isValidTriplicate(selectedCards)) {
+      console.warn(`[OPEN TRIPLICATE REJECTED] Invalid triplicate combination.`);
+      return { success: false, message: "Invalid Triplicate combination (3-7 cards of same rank, max 1 Joker)." };
+    }
+
+    soundEngine.playMeldOpen();
+
+    const nonJoker = selectedCards.find(c => !c.isJoker);
+
+    const newComb: Combination = {
+      id: `comb_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      type: 'TRIPLICATE',
+      cards: selectedCards,
+      suit: null,
+      rank: nonJoker?.rank || selectedCards[0].rank,
+      ownerId: teamKey,
+      points: 0,
+    };
+
+    console.log(`[OPEN TRIPLICATE REQUEST] roomCode: ${state.onlineRoomCode} sessionId: ${state.gameSessionId} playerId: ${activeId} selectedCards:`, selectedCards.map(c => `${c.rank}${c.suit}`));
+
+    setSelectedCardIds([]);
+
+    setState(prev => {
+      const currentActiveId = prev.playerOrder[prev.currentTurnIndex];
+      const currentActiveP = prev.players[currentActiveId];
+      if (!currentActiveP) return prev;
+
+      const remainingHand = currentActiveP.hand.filter(c => !selectedCards.some(sc => sc.id === c.id));
+      const currentTeamKey = getTeamKey(currentActiveP, prev.gameMode);
+      const teamCombs = (prev.combinations && prev.combinations[currentTeamKey]) ? prev.combinations[currentTeamKey] : [];
+
+      const updatedPlayers = {
+        ...prev.players,
+      };
+      if (updatedPlayers[currentActiveId]) {
+        updatedPlayers[currentActiveId] = {
+          ...updatedPlayers[currentActiveId],
+          hand: remainingHand,
+        };
+      }
+
+      let nextState: GameState = {
+        ...prev,
+        players: updatedPlayers,
+        combinations: {
+          ...(prev.combinations || {}),
+          [currentTeamKey]: [...teamCombs, newComb],
+        },
+        lastAction: `${currentActiveP.name} opened a Triplicate (${selectedCards.length} cards).`,
+        version: (prev.version || 1) + 1,
+        updatedAt: Date.now(),
+      };
+
+      if (remainingHand.length === 0) {
+        const nextIdx = (prev.currentTurnIndex + 1) % prev.playerOrder.length;
+        const nextPlayerId = prev.playerOrder[nextIdx];
+        const nextPlayer = prev.players[nextPlayerId];
+        nextState = {
+          ...nextState,
+          currentTurnIndex: nextIdx,
+          currentTurnPlayerId: nextPlayerId,
+          hasDrawnThisTurn: false,
+          mustDiscard: false,
+          phase: 'DRAW',
+          lastAction: `${currentActiveP.name}'s hand is empty (0 cards). Waiting for next turn. Turn moved to ${nextPlayer ? nextPlayer.name : nextPlayerId}.`,
+          version: (nextState.version || 1) + 1,
+          updatedAt: Date.now(),
+        };
+      }
+
+      console.log(`[OPEN TRIPLICATE] SUCCESS! version:${nextState.version} room:${nextState.onlineRoomCode} comb:${newComb.id}`);
+      console.log(`[REALTIME BROADCAST] roomCode:${nextState.onlineRoomCode} version:${nextState.version}`);
+
+      syncOnlineState(nextState);
+      return nextState;
+    });
+
+    return { success: true, message: 'Triplicate opened successfully!' };
+  }, [state, selectedCardIds, addSelectionToCombination, syncOnlineState]);
 
   const discardSelectedCard = useCallback((): { success: boolean; message: string } => {
     if (state.isOnlineMode && state.localPlayerId) {
@@ -918,6 +950,87 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentActiveId = prev.playerOrder[prev.currentTurnIndex];
       const currentActivePlayer = prev.players[currentActiveId];
       if (!currentActivePlayer) return prev;
+
+      const opponentWinner = prev.gameMode === '2P'
+        ? (currentActiveId === 'P1' ? 'P2' : 'P1')
+        : (currentActivePlayer.team === 'A' ? 'B' : 'A');
+
+      // RULE 2: BHUKHARA HELLO DISCARD FOUL!
+      // If player claimed Bhukhara and melded cards, but discards WITHOUT saying HELLO -> INSTANT FOUL!
+      if ((prev.claimedBhukharaThisTurn || currentActivePlayer.justClaimedBhukharaThisTurn || prev.phase === 'HELLO_WAIT') && prev.hasMeldedThisTurn) {
+        soundEngine.playFoul();
+        const foulState: GameState = {
+          ...prev,
+          phase: 'FOUL',
+          winner: opponentWinner,
+          foul: {
+            isFoul: true,
+            player: currentActiveId,
+            reason: `🚫 BHUKHARA HELLO FOUL! ${currentActivePlayer.name} discarded a card after claiming Bhukhara WITHOUT clicking 'SAY HELLO'! Presence of Mind Violation! Opponent Wins!`,
+            winnerId: opponentWinner,
+          },
+          lastAction: `🚫 BHUKHARA HELLO FOUL! ${currentActivePlayer.name} discarded without saying HELLO! Match Won by Opponent!`,
+          version: (prev.version || 1) + 1,
+          updatedAt: Date.now(),
+        };
+        syncOnlineState(foulState);
+        return foulState;
+      }
+
+      // RULE 1: BHUKHARA CLAIM REVERT LOGIC!
+      // If player claimed Bhukhara 13 cards but could NOT open or add any card to combinations -> REVERT BHUKHARA PILE & CLOSE BACK!
+      if ((prev.claimedBhukharaThisTurn || currentActivePlayer.justClaimedBhukharaThisTurn) && !prev.hasMeldedThisTurn) {
+        soundEngine.playCardShuffle();
+        const bhukharaRevertedPile = [...currentActivePlayer.hand]; // Return claimed 13 cards back to Bhukhara pile
+        const restoredPlayerHand: Card[] = []; // Hand emptied back to 0 cards
+
+        const stateAfterRevert: GameState = {
+          ...prev,
+          bhukharaPile: bhukharaRevertedPile,
+          players: {
+            ...prev.players,
+            [currentActiveId]: {
+              ...currentActivePlayer,
+              hand: restoredPlayerHand,
+              hasClaimedBhukhara: false,
+              justClaimedBhukharaThisTurn: false,
+              modaCount: Math.max(0, currentActivePlayer.modaCount - 1),
+            },
+          },
+          modaCount: Math.max(0, prev.modaCount - 1),
+          claimedBhukharaThisTurn: false,
+          hasMeldedThisTurn: false,
+          lastAction: `↩️ BHUKHARA REVERTED! ${currentActivePlayer.name} could not play any card from Bhukhara. 13 cards closed back to Bhukhara pile & turn ended.`,
+          version: (prev.version || 1) + 1,
+          updatedAt: Date.now(),
+        };
+
+        const nextState = advanceTurn(stateAfterRevert);
+        syncOnlineState(nextState);
+        return nextState;
+      }
+
+      // RULE 3: OPEN DECK PICKUP COMPULSORY PLAY FOUL!
+      // If player picked up cards from Open Deck but discards WITHOUT opening a new series/triplicate or adding to an existing series/triplicate -> INSTANT FOUL!
+      if (prev.pickedFromOpenDeckThisTurn && !prev.hasMeldedThisTurn) {
+        soundEngine.playFoul();
+        const foulState: GameState = {
+          ...prev,
+          phase: 'FOUL',
+          winner: opponentWinner,
+          foul: {
+            isFoul: true,
+            player: currentActiveId,
+            reason: `🚫 OPEN DECK PICKUP FOUL! ${currentActivePlayer.name} picked up cards from the Open Deck but discarded without opening or adding cards to table combinations! Opponent Wins!`,
+            winnerId: opponentWinner,
+          },
+          lastAction: `🚫 OPEN DECK PICKUP FOUL! ${currentActivePlayer.name} failed to play cards after picking up Open Deck! Match Won by Opponent!`,
+          version: (prev.version || 1) + 1,
+          updatedAt: Date.now(),
+        };
+        syncOnlineState(foulState);
+        return foulState;
+      }
 
       const targetCard = currentActivePlayer.hand.find(c => c.id === discardCard.id);
       if (!targetCard) {

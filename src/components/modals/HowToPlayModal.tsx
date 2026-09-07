@@ -109,6 +109,71 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
               In 2-Bazzi mode, Bazzi 1 score difference carries forward as the <strong>Lead</strong> into Bazzi 2 to determine the ultimate winner!
             </p>
           </section>
+
+          <section className="rule-section">
+            <h3>8. Official Rules & Foul Matrix Table</h3>
+            <p>
+              Strict tournament gameplay rules, compulsory play conditions, and foul consequences:
+            </p>
+            <div className="rules-matrix-table-wrapper">
+              <table className="rules-matrix-table">
+                <thead>
+                  <tr>
+                    <th>Action / Scenario</th>
+                    <th>Compulsory Play Requirement</th>
+                    <th>Penalty / Rule Outcome</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>1. Claiming Bhukhara</strong></td>
+                    <td>Must open a new Series/Triplicate OR add at least 1 card to an existing combination on that turn.</td>
+                    <td>
+                      <span className="badge-revert">BHUKHARA REVERT</span>
+                      <br />
+                      13 Bhukhara cards close back to pile. Turn ends; try again on a future turn.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>2. Bhukhara Discard ("Say Hello")</strong></td>
+                    <td>Must click <strong>Say Hello</strong> button BEFORE discarding after claiming Bhukhara cards.</td>
+                    <td>
+                      <span className="badge-foul">INSTANT FOUL</span>
+                      <br />
+                      Discarding without saying Hello forfeits match instantly! Opponent wins.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>3. Open Deck Pickup</strong></td>
+                    <td>Must open a new combination OR add at least 1 card to an existing combination on that turn.</td>
+                    <td>
+                      <span className="badge-foul">INSTANT FOUL</span>
+                      <br />
+                      Discarding without melding cards forfeits match instantly! Opponent wins.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>4. Moda Discard Validation</strong></td>
+                    <td>The final card in hand being discarded for Moda MUST NOT fit into any table combination.</td>
+                    <td>
+                      <span className="badge-foul">INSTANT FOUL</span>
+                      <br />
+                      If the discarded card could fit into a table combination, opponent wins!
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>5. Initial Open Meld</strong></td>
+                    <td>First combination MUST be a Pure Same-Colour Series (3–7 cards, 0 Jokers).</td>
+                    <td>
+                      <span className="badge-block">ACTION BLOCKED</span>
+                      <br />
+                      Cannot open with Triplicates or Jokers until Pure Series is opened first.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
 
         <div className="modal-footer">

@@ -103,7 +103,7 @@ export interface GameState {
   animationSpeed: 'normal' | 'fast' | 'slow';
   language: 'EN' | 'HI';
   
-  // Online Multiplayer additions
+  // Online Multiplayer & Turn Rule Tracking
   isOnlineMode?: boolean;
   onlineRoomCode?: string;
   localPlayerId?: string;
@@ -114,6 +114,9 @@ export interface GameState {
   gameSessionId?: string;
   updatedAt?: number;
   coinWager?: number;
+  pickedFromOpenDeckThisTurn?: boolean;
+  hasMeldedThisTurn?: boolean;
+  claimedBhukharaThisTurn?: boolean;
 }
 
 /* Real-Time Online Multiplayer Room System Types */

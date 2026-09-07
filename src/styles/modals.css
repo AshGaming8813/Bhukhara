@@ -315,3 +315,72 @@
 }
 
 .bazzi-table th { color: var(--gold-light); }
+
+/* Rules Matrix Table */
+.rules-matrix-table-wrapper {
+  overflow-x: auto;
+  margin-top: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.rules-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.rules-matrix-table th {
+  background: rgba(4, 18, 14, 0.95);
+  color: var(--gold-light);
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--gold-primary);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.rules-matrix-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: top;
+  color: var(--text-light);
+}
+
+.rules-matrix-table tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.badge-foul {
+  display: inline-block;
+  background: rgba(231, 76, 60, 0.2);
+  color: #ff7675;
+  border: 1px solid #e74c3c;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.badge-revert {
+  display: inline-block;
+  background: rgba(243, 156, 18, 0.2);
+  color: #f1c40f;
+  border: 1px solid #f39c12;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.badge-block {
+  display: inline-block;
+  background: rgba(52, 152, 219, 0.2);
+  color: #74b9ff;
+  border: 1px solid #3498db;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
