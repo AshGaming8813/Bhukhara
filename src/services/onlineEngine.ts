@@ -570,8 +570,9 @@ export const onlineEngine = {
     const deal = dealCards(room.gameMode, deck);
     const playerOrder = room.gameMode === '2P' ? ['P1', 'P2'] : ['P1', 'P2', 'P3', 'P4'];
 
-    const dealerIdx = Math.floor(Math.random() * playerOrder.length);
-    const firstTurnIdx = (dealerIdx + 1) % playerOrder.length;
+    // Set initial dealer to last player so first turn starts at P1 (index 0)
+    const dealerIdx = playerOrder.length - 1;
+    const firstTurnIdx = 0;
 
     const gamePlayers: Record<string, Player> = {};
     playersList.forEach(p => {

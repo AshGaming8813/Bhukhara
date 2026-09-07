@@ -40,6 +40,33 @@ export const TableCenter: React.FC = () => {
 
   return (
     <div className="table-center-area mockup-center-area">
+      {/* 4P & 2P Turn Sequence Tracker */}
+      <div className="turn-sequence-tracker" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '8px' }}>
+        {playerOrder.map((pid, idx) => {
+          const isCurrent = idx === currentTurnIndex;
+          const pObj = state.players ? state.players[pid] : undefined;
+          const pLabel = pid === myPlayerId ? 'P1 (You)' : (pObj?.name || pid);
+          return (
+            <React.Fragment key={pid}>
+              <span style={{
+                padding: '3px 9px',
+                borderRadius: '12px',
+                fontSize: '0.74rem',
+                fontWeight: isCurrent ? 900 : 600,
+                background: isCurrent ? 'linear-gradient(135deg, #f39c12, #d4af37)' : 'rgba(0, 0, 0, 0.45)',
+                color: isCurrent ? '#000' : 'rgba(255, 255, 255, 0.7)',
+                border: isCurrent ? '1.5px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.18)',
+                boxShadow: isCurrent ? '0 0 12px rgba(241, 196, 15, 0.7)' : 'none',
+                transition: 'all 0.3s ease',
+              }}>
+                {pLabel} {isCurrent ? '⚡' : ''}
+              </span>
+              {idx < playerOrder.length - 1 && <span style={{ color: '#d4af37', fontSize: '0.75rem', fontWeight: 800 }}>➔</span>}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
       {/* Close Deck, Open Deck & Bhukhara Deck Unified 3-Box Stage */}
       <div className="decks-row-unified">
         {/* Close Deck Box */}

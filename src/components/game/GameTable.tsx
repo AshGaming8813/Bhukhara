@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
 import { StatusHeader } from './StatusHeader';
 import { TableCenter } from './TableCenter';
@@ -6,7 +6,7 @@ import { CombinationBoard } from './CombinationBoard';
 import { PlayerHand } from './PlayerHand';
 import { ActionPanel } from './ActionPanel';
 import { EmotePicker } from '../online/EmotePicker';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCw, Maximize2 } from 'lucide-react';
 
 interface GameTableProps {
   onOpenSettings: () => void;
@@ -22,6 +22,52 @@ export const GameTable: React.FC<GameTableProps> = ({
   const myPlayerId = state.isOnlineMode ? (state.localPlayerId || 'P1') : 'P1';
   const playerOrder = state.playerOrder || [];
   const myPlayer = state.players ? state.players[myPlayerId] : undefined;
+
+  // Mobile Phone Portrait Orientation Detector
+  const [isPortraitMobile, setIsPortraitMobile] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+    }
+    return false;
+  });
+  const [dismissRotatePrompt, setDismissRotatePrompt] = useState(false);
+
+  useEffect(() => {
+    const checkOrientation = () => {
+      const isPortrait = window.innerWidth < 768 && window.innerHeight > window.innerWidth;
+      setIsPortraitMobile(isPortrait);
+    };
+
+    // Attempt Screen Orientation Lock to Landscape on mobile
+    try {
+      if (window.screen && (window.screen as any).orientation && (window.screen as any).orientation.lock) {
+        (window.screen as any).orientation.lock('landscape').catch(() => {});
+      }
+    } catch (e) {
+      console.warn('Orientation lock notice:', e);
+    }
+
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
+
+  const handleFullscreenAndRotate = () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+      if (window.screen && (window.screen as any).orientation && (window.screen as any).orientation.lock) {
+        (window.screen as any).orientation.lock('landscape').catch(() => {});
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+    setDismissRotatePrompt(true);
+  };
 
   // Render transitional loading state if online game is initializing cards and player slots
   if (state.isOnlineMode && (!myPlayer || playerOrder.length === 0)) {
@@ -43,6 +89,31 @@ export const GameTable: React.FC<GameTableProps> = ({
 
   return (
     <div className="game-table-screen">
+      {/* Mobile Portrait Orientation Prompt Overlay */}
+      {isPortraitMobile && !dismissRotatePrompt && (
+        <div className="rotate-device-overlay" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(4, 18, 14, 0.96)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', color: '#fff' }}>
+          <div style={{ background: 'linear-gradient(145deg, #0c2b20, #04120e)', border: '2px solid #d4af37', borderRadius: '24px', padding: '28px 24px', maxWidth: '340px', boxShadow: '0 0 40px rgba(212, 175, 55, 0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+            <div style={{ background: 'rgba(212, 175, 55, 0.15)', border: '1px solid #d4af37', padding: '16px', borderRadius: '50%', color: '#f1c40f', boxShadow: '0 0 20px rgba(241, 196, 15, 0.3)' }}>
+              <RotateCw size={44} className="spin-slow" />
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#f1c40f', margin: 0, letterSpacing: '1px' }}>
+              ROTATE PHONE TO LANDSCAPE
+            </h2>
+            <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5 }}>
+              Bhukhara requires a wide landscape card table layout to display Team A, Decks, Team B, and 13-card player hands cleanly without cropping!
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginTop: '8px' }}>
+              <button className="btn btn-gold btn-large" onClick={handleFullscreenAndRotate} style={{ width: '100%', justifyContent: 'center', gap: '8px' }}>
+                <Maximize2 size={18} /> ROTATE & PLAY FULLSCREEN
+              </button>
+              <button className="btn btn-secondary btn-small" onClick={() => setDismissRotatePrompt(true)} style={{ width: '100%', justifyContent: 'center', opacity: 0.8, fontSize: '0.75rem' }}>
+                Continue in Portrait
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Header Bar */}
       <StatusHeader onOpenSettings={onOpenSettings} onConfirmRestart={onConfirmRestart} />
 
@@ -115,7 +186,7 @@ export const GameTable: React.FC<GameTableProps> = ({
                 </div>
                 <div className="info-row">
                   <span className="info-label">First Turn :</span>
-                  <span className="info-value">{state.playerOrder[0] === myPlayerId ? 'Player 1' : 'Player 2'}</span>
+                  <span className="info-value">{state.players[state.playerOrder[0]]?.name || 'Player 1 (You)'}</span>
                 </div>
               </div>
             </div>
