@@ -1246,8 +1246,53 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const activePlayer = prev.players[activeId];
       const activeName = activePlayer ? activePlayer.name : activeId;
 
+      // RULE 1: If player claimed Bhukhara but did NOT meld any card, revert Bhukhara pile & end turn
+      if ((prev.claimedBhukharaThisTurn || activePlayer?.justClaimedBhukharaThisTurn) && !prev.hasMeldedThisTurn) {
+        soundEngine.playCardShuffle();
+        const bhukharaRevertedPile = [...(activePlayer?.hand || [])];
+        const restoredPlayerHand: Card[] = [];
+
+        const updatedPlayers = {
+          ...prev.players,
+          [activeId]: {
+            ...activePlayer,
+            hand: restoredPlayerHand,
+            hasClaimedBhukhara: false,
+            justClaimedBhukharaThisTurn: false,
+            modaCount: Math.max(0, ((activePlayer?.modaCount || 1) - 1)),
+          },
+        };
+
+        const stateAfterRevert: GameState = {
+          ...prev,
+          bhukharaPile: bhukharaRevertedPile,
+          players: updatedPlayers,
+          modaCount: Math.max(0, prev.modaCount - 1),
+          claimedBhukharaThisTurn: false,
+          hasMeldedThisTurn: false,
+          lastAction: `↩️ BHUKHARA REVERTED! ${activeName} could not play any card from Bhukhara. 13 cards closed back to Bhukhara pile & turn ended.`,
+          version: (prev.version || 1) + 1,
+          updatedAt: Date.now(),
+        };
+
+        const nextState = advanceTurn(stateAfterRevert);
+        syncOnlineState(nextState);
+        return nextState;
+      }
+
+      // Valid Say Hello after melding cards
+      const updatedPlayers = {
+        ...prev.players,
+        [activeId]: {
+          ...activePlayer,
+          justClaimedBhukharaThisTurn: false,
+        },
+      };
+
       const stateBeforeAdvance: GameState = {
         ...prev,
+        players: updatedPlayers,
+        claimedBhukharaThisTurn: false,
         lastAction: `👋 ${activeName} claimed Bhukhara and said HELLO! Turn passed.`,
         version: (prev.version || 1) + 1,
         updatedAt: Date.now(),

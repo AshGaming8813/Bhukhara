@@ -64,12 +64,13 @@ export const ActionPanel: React.FC = () => {
     }
   };
 
+  const hasClaimedBhukhara = !!activePlayer?.justClaimedBhukharaThisTurn || !!state.claimedBhukharaThisTurn || state.phase === 'HELLO_WAIT';
   const isDrawDisabled = !isHumanTurn || state.hasDrawnThisTurn;
   const isMeldDisabled = !isHumanTurn || !state.hasDrawnThisTurn;
-  const isDiscardDisabled = !isHumanTurn || !state.hasDrawnThisTurn || selectedCardIds.length !== 1;
+  const isDiscardDisabled = !isHumanTurn || !state.hasDrawnThisTurn || selectedCardIds.length !== 1 || hasClaimedBhukhara;
   const isModaDisabled = !isHumanTurn || activePlayer?.hand?.length !== 1;
   const isHelloDisabled = !isHumanTurn;
-  const showHelloButton = state.phase === 'HELLO_WAIT' || !!activePlayer?.justClaimedBhukharaThisTurn;
+  const showHelloButton = hasClaimedBhukhara;
 
   return (
     <div className="action-panel-compact-container mockup-action-panel">

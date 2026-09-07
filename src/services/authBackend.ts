@@ -115,6 +115,60 @@ if (authBc) {
   };
 }
 
+function getApiUrl(): string {
+  const host = typeof window !== 'undefined' && window.location ? window.location.hostname || 'localhost' : 'localhost';
+  return `http://${host}:3001/api`;
+}
+
+export async function syncDataWithBackendServer(): Promise<void> {
+  try {
+    const apiUrl = getApiUrl();
+    const playersRes = await fetch(`${apiUrl}/admin/players`);
+    if (playersRes.ok) {
+      const data = await playersRes.json();
+      if (data && Array.isArray(data.players)) {
+        const remoteUsers: User[] = data.players;
+        const localUsers = authBackend.getUsers();
+        let changed = false;
+
+        remoteUsers.forEach(ru => {
+          const idx = localUsers.findIndex(
+            lu => lu.id === ru.id || lu.player_id === ru.player_id || (lu.email && ru.email && lu.email.toLowerCase() === ru.email.toLowerCase())
+          );
+          if (idx === -1) {
+            localUsers.push(ru);
+            changed = true;
+          } else {
+            if (localUsers[idx].coin_balance !== ru.coin_balance || localUsers[idx].username !== ru.username || localUsers[idx].status !== ru.status) {
+              localUsers[idx] = { ...localUsers[idx], ...ru };
+              changed = true;
+            }
+          }
+        });
+
+        if (changed) {
+          authBackend.saveUsers(localUsers);
+          notifyAuthEvent('USERS_SYNCED', localUsers);
+        }
+      }
+    }
+
+    const historyRes = await fetch(`${apiUrl}/admin/coin-history`);
+    if (historyRes.ok) {
+      const histData = await historyRes.json();
+      if (histData && Array.isArray(histData.history)) {
+        const remoteHist: DbCoinAdjustment[] = histData.history;
+        if (remoteHist.length > 0) {
+          authBackend.saveAdjustments(remoteHist);
+          notifyAuthEvent('HISTORY_SYNCED', remoteHist);
+        }
+      }
+    }
+  } catch (e) {
+    // Graceful offline fallback
+  }
+}
+
 export const authBackend = {
   initDatabase(): void {
     try {
@@ -126,6 +180,13 @@ export const authBackend = {
       }
     } catch (e) {
       console.warn('Init auth DB warning:', e);
+    }
+
+    syncDataWithBackendServer();
+    if (typeof window !== 'undefined' && !(window as any).__bhukhara_sync_interval) {
+      (window as any).__bhukhara_sync_interval = setInterval(() => {
+        syncDataWithBackendServer();
+      }, 3000);
     }
   },
 
@@ -268,6 +329,33 @@ export const authBackend = {
 
     const session = this.createSession(newUser);
     notifyAuthEvent('USER_REGISTERED', newUser);
+
+    // Sync with central backend server REST API
+    fetch(`${getApiUrl()}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: cleanName,
+        email: cleanEmail,
+        password: pass,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.user) {
+          const curUsers = authBackend.getUsers();
+          const idx = curUsers.findIndex(u => u.email.toLowerCase() === cleanEmail);
+          if (idx !== -1) {
+            curUsers[idx] = { ...curUsers[idx], ...data.user };
+            authBackend.saveUsers(curUsers);
+            notifyAuthEvent('USER_REGISTERED', curUsers[idx]);
+          }
+        }
+      })
+      .catch(err => {
+        console.warn('Backend server register sync error:', err);
+      });
+
     return { success: true, session };
   },
 
@@ -459,6 +547,35 @@ export const authBackend = {
     this.saveAdjustments(adjustments);
 
     notifyAuthEvent('COIN_ADJUSTED', { userId: targetUser.id, newBalance, adjustmentRecord });
+
+    // Sync with central backend server REST API
+    fetch(`${getApiUrl()}/admin/adjust-coins`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: targetUser.id,
+        playerId: targetUser.player_id,
+        amount: cleanAmount,
+        action,
+        reason: cleanReason,
+        adminId: session.userId,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.user) {
+          const curUsers = authBackend.getUsers();
+          const idx = curUsers.findIndex(u => u.id === data.user.id || u.player_id === data.user.player_id);
+          if (idx !== -1) {
+            curUsers[idx].coin_balance = data.user.coin_balance;
+            authBackend.saveUsers(curUsers);
+            notifyAuthEvent('COIN_ADJUSTED', { userId: curUsers[idx].id, newBalance: data.user.coin_balance });
+          }
+        }
+      })
+      .catch(err => {
+        console.warn('Backend server coin adjustment sync error:', err);
+      });
 
     return {
       success: true,

@@ -146,6 +146,20 @@ class Store {
     return this.data.users.find(u => u.username.toLowerCase() === clean);
   }
 
+  generateNextPlayerId() {
+    const players = (this.data?.users || []).filter(u => u.role === 'player');
+    let maxNum = 100000;
+    players.forEach(u => {
+      if (u.player_id && u.player_id.startsWith('BHUK-')) {
+        const num = parseInt(u.player_id.replace('BHUK-', ''), 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });
+    return `BHUK-${maxNum + 1}`;
+  }
+
   createUser({ username, email, password }) {
     const existingEmail = this.getUserByEmail(email);
     if (existingEmail) {
@@ -156,8 +170,7 @@ class Store {
       throw new Error('This username is already taken.');
     }
 
-    const randomDigits = Math.floor(100000 + Math.random() * 900000);
-    const newPlayerId = `BHUK-${randomDigits}`;
+    const newPlayerId = this.generateNextPlayerId();
     const newUserId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
     const newUser = {
@@ -167,7 +180,7 @@ class Store {
       email: email.trim().toLowerCase(),
       password_hash: hashPassword(password),
       role: 'player',
-      coin_balance: 1000, // Initial welcome coin balance
+      coin_balance: 0,
       status: 'active',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -181,7 +194,7 @@ class Store {
   authenticateUser(loginId, password) {
     const clean = loginId.trim().toLowerCase();
     const user = this.data.users.find(
-      u => u.email.toLowerCase() === clean || u.username.toLowerCase() === clean
+      u => u.email.toLowerCase() === clean || u.username.toLowerCase() === clean || u.player_id.toLowerCase() === clean
     );
 
     if (!user) {
@@ -233,20 +246,27 @@ class Store {
     user.coin_balance = newBalance;
     user.updated_at = new Date().toISOString();
 
+    const normalizedAction = (action || (deltaCoins >= 0 ? 'ADD' : 'REMOVE')).toUpperCase();
     const adj = {
-      id: `adj_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      user_id: user.id,
-      player_id: user.player_id,
-      username: user.username,
-      admin_id: adminId,
-      action: action || (deltaCoins >= 0 ? 'add' : 'deduct'),
+      id: `ADJ_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      userId: user.id,
+      playerId: user.player_id,
+      playerUsername: user.username,
+      adminId: adminId || 'usr_admin_1',
+      adminUsername: adminId === 'usr_admin_1' ? 'SuperAdmin' : adminId,
+      action: normalizedAction,
       amount: Math.abs(deltaCoins),
+      previousBalance: prevBalance,
+      newBalance: newBalance,
       prev_balance: prevBalance,
       new_balance: newBalance,
+      createdAt: new Date().toISOString(),
       timestamp: new Date().toISOString(),
-      note: note || `Coins ${deltaCoins >= 0 ? 'added' : 'deducted'}`,
+      reason: note || `Coins ${deltaCoins >= 0 ? 'added' : 'removed'} by admin`,
+      note: note || `Coins ${deltaCoins >= 0 ? 'added' : 'removed'} by admin`,
     };
 
+    this.data.adjustments = this.data.adjustments || [];
     this.data.adjustments.unshift(adj);
     this.saveData();
 
@@ -254,7 +274,7 @@ class Store {
   }
 
   getAdjustments() {
-    return this.data.adjustments;
+    return this.data.adjustments || [];
   }
 }
 

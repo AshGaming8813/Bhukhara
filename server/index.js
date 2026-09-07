@@ -103,19 +103,26 @@ app.get('/api/admin/players', (req, res) => {
 
 app.post('/api/admin/adjust-coins', (req, res) => {
   try {
-    const { userId, deltaCoins, action, adminId, note } = req.body;
-    if (!userId || deltaCoins === undefined) {
-      return res.status(400).json({ error: 'userId and deltaCoins are required.' });
+    const { userId, playerId, amount, deltaCoins, action, reason, note, adminId } = req.body;
+    const targetId = userId || playerId;
+    const cleanAmount = Math.abs(Number(amount !== undefined ? amount : deltaCoins));
+    
+    if (!targetId || isNaN(cleanAmount)) {
+      return res.status(400).json({ error: 'Player ID and valid coin amount are required.' });
     }
+    
+    const cleanAction = (action || (Number(deltaCoins) < 0 ? 'REMOVE' : 'ADD')).toUpperCase();
+    const finalDelta = cleanAction === 'REMOVE' ? -cleanAmount : cleanAmount;
+
     const { user, adj } = dbStore.updateCoinBalance(
-      userId,
-      Number(deltaCoins),
-      action,
-      adminId || 'ADMIN',
-      note
+      targetId,
+      finalDelta,
+      cleanAction,
+      adminId || 'usr_admin_1',
+      reason || note || ''
     );
     const { password_hash, ...safeUser } = user;
-    res.json({ success: true, user: safeUser, adjustment: adj });
+    res.json({ success: true, user: safeUser, adjustment: adj, newBalance: user.coin_balance });
   } catch (err) {
     res.status(400).json({ error: err.message || 'Coin adjustment failed.' });
   }

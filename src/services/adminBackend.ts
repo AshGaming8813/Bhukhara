@@ -6,6 +6,7 @@ import type {
   AdminDashboardMetrics,
   AdjustmentAction,
 } from '../types/admin';
+import { authBackend } from './authBackend';
 
 const STORAGE_PLAYERS = 'bhukhara_db_players';
 const STORAGE_ADJUSTMENTS = 'bhukhara_db_adjustments';
@@ -139,12 +140,16 @@ export const adminBackend = {
   },
 
   getPlayersList(): DbPlayer[] {
-    this.initDatabase();
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_PLAYERS) || '[]');
-    } catch {
-      return SEED_PLAYERS;
-    }
+    const users = authBackend.getUsers().filter(u => u.role === 'player');
+    return users.map(u => ({
+      id: u.player_id || u.id,
+      username: u.username,
+      avatar: '👑',
+      coinBalance: u.coin_balance,
+      status: u.status,
+      createdAt: u.created_at,
+      lastActive: u.updated_at || new Date().toISOString(),
+    }));
   },
 
   getAdjustmentsList(): DbCoinAdjustment[] {
