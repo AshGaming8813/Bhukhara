@@ -116,6 +116,8 @@ export interface GameState {
   updatedAt?: number;
   coinWager?: number;
   pickedFromOpenDeckThisTurn?: boolean;
+  usedOpenDeckCardThisTurn?: boolean;
+  openDeckTakenCardIds?: string[];
   hasMeldedThisTurn?: boolean;
   claimedBhukharaThisTurn?: boolean;
   aiDifficulty?: AIDifficulty;

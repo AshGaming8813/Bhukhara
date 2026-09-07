@@ -255,6 +255,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       currentTurnPlayerId: nextPlayerId,
       hasDrawnThisTurn: false,
       mustDiscard: false,
+      pickedFromOpenDeckThisTurn: false,
+      usedOpenDeckCardThisTurn: false,
+      openDeckTakenCardIds: [],
+      hasMeldedThisTurn: false,
+      claimedBhukharaThisTurn: false,
       phase: 'DRAW',
       lastAction: `Turn moved clockwise to ${nextPlayer ? nextPlayer.name : (nextPlayerId || 'next player')}.`,
       version: nextVersion,
@@ -503,10 +508,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       soundEngine.playDrawCard();
 
+      const takenCardIds = takenCards.map(c => c.id);
       const nextState: GameState = {
         ...prev,
         openDeck: remainingOpen,
         hasDrawnThisTurn: true,
+        pickedFromOpenDeckThisTurn: true,
+        usedOpenDeckCardThisTurn: false,
+        openDeckTakenCardIds: takenCardIds,
         phase: 'MELD_OR_DISCARD',
         players: {
           ...prev.players,
@@ -605,10 +614,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
 
+      const openTakenIds = prev.openDeckTakenCardIds || [];
+      const isUsedFromOpen = (prev.pickedFromOpenDeckThisTurn && selectedCards.some(c => openTakenIds.includes(c.id))) || prev.usedOpenDeckCardThisTurn || false;
+
       let nextState: GameState = {
         ...prev,
         players: updatedPlayers,
         hasMeldedThisTurn: true,
+        usedOpenDeckCardThisTurn: isUsedFromOpen,
         combinations: {
           ...(prev.combinations || {}),
           [currentTeamKey]: updatedCombs,
@@ -746,10 +759,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
 
+      const openTakenIds = prev.openDeckTakenCardIds || [];
+      const isUsedFromOpen = (prev.pickedFromOpenDeckThisTurn && selectedCards.some(c => openTakenIds.includes(c.id))) || prev.usedOpenDeckCardThisTurn || false;
+
       let nextState: GameState = {
         ...prev,
         players: updatedPlayers,
         hasMeldedThisTurn: true,
+        usedOpenDeckCardThisTurn: isUsedFromOpen,
         combinations: {
           ...(prev.combinations || {}),
           [currentTeamKey]: [...teamCombs, newComb],
@@ -880,10 +897,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
 
+      const openTakenIds = prev.openDeckTakenCardIds || [];
+      const isUsedFromOpen = (prev.pickedFromOpenDeckThisTurn && selectedCards.some(c => openTakenIds.includes(c.id))) || prev.usedOpenDeckCardThisTurn || false;
+
       let nextState: GameState = {
         ...prev,
         players: updatedPlayers,
         hasMeldedThisTurn: true,
+        usedOpenDeckCardThisTurn: isUsedFromOpen,
         combinations: {
           ...(prev.combinations || {}),
           [currentTeamKey]: [...teamCombs, newComb],
@@ -1016,8 +1037,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // RULE 3: OPEN DECK PICKUP COMPULSORY PLAY FOUL!
-      // If player picked up cards from Open Deck but discards WITHOUT opening a new series/triplicate or adding to an existing series/triplicate -> INSTANT FOUL!
-      if (prev.pickedFromOpenDeckThisTurn && !prev.hasMeldedThisTurn) {
+      // If player picked up cards from Open Deck but discards WITHOUT using at least ONE of the cards taken from Open Deck in a combination -> INSTANT FOUL!
+      if (prev.pickedFromOpenDeckThisTurn && !prev.usedOpenDeckCardThisTurn) {
         soundEngine.playFoul();
         const foulState: GameState = {
           ...prev,
@@ -1026,10 +1047,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           foul: {
             isFoul: true,
             player: currentActiveId,
-            reason: `🚫 OPEN DECK PICKUP FOUL! ${currentActivePlayer.name} picked up cards from the Open Deck but discarded without opening or adding cards to table combinations! Opponent Wins!`,
+            reason: `🚫 OPEN DECK PICKUP FOUL! ${currentActivePlayer.name} picked up cards from the Open Deck but discarded without using at least one of the cards taken from the Open Deck in a combination! Opponent Wins!`,
             winnerId: opponentWinner,
           },
-          lastAction: `🚫 OPEN DECK PICKUP FOUL! ${currentActivePlayer.name} failed to play cards after picking up Open Deck! Match Won by Opponent!`,
+          lastAction: `🚫 OPEN DECK PICKUP FOUL! ${currentActivePlayer.name} failed to use cards taken from Open Deck! Match Won by Opponent!`,
           version: (prev.version || 1) + 1,
           updatedAt: Date.now(),
         };

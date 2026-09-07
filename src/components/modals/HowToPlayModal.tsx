@@ -145,11 +145,11 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
                   </tr>
                   <tr>
                     <td><strong>3. Open Deck Pickup</strong></td>
-                    <td>Must open a new combination OR add at least 1 card to an existing combination on that turn.</td>
+                    <td>Must use <strong>AT LEAST ONE of the cards taken from the Open Deck</strong> to open a new Series/Triplicate or add to an existing combination on that turn.</td>
                     <td>
                       <span className="badge-foul">INSTANT FOUL</span>
                       <br />
-                      Discarding without melding cards forfeits match instantly! Opponent wins.
+                      Discarding without using at least one card taken from the Open Deck forfeits match instantly! Opponent wins.
                     </td>
                   </tr>
                   <tr>
