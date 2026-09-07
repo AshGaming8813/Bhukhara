@@ -1,0 +1,66 @@
+{
+  "users": [
+    {
+      "id": "usr_admin_1",
+      "player_id": "BHUK-000000",
+      "username": "SuperAdmin",
+      "email": "admin@bhukhara.app",
+      "password_hash": "hash_40902e62",
+      "role": "admin",
+      "coin_balance": 0,
+      "status": "active",
+      "created_at": "2026-01-01T00:00:00.000Z",
+      "updated_at": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "usr_player_1",
+      "player_id": "BHUK-100001",
+      "username": "Namit",
+      "email": "namit@bhukhara.app",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1250,
+      "status": "active",
+      "created_at": "2026-08-01T10:00:00.000Z",
+      "updated_at": "2026-09-05T17:02:02.123Z"
+    },
+    {
+      "id": "usr_player_2",
+      "player_id": "BHUK-100002",
+      "username": "Rohan",
+      "email": "rohan@bhukhara.app",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-08-02T11:30:00.000Z",
+      "updated_at": "2026-09-05T17:02:02.124Z"
+    },
+    {
+      "id": "usr_player_3",
+      "player_id": "BHUK-100003",
+      "username": "Priya",
+      "email": "priya@bhukhara.app",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 850,
+      "status": "active",
+      "created_at": "2026-08-05T14:15:00.000Z",
+      "updated_at": "2026-09-05T17:02:02.124Z"
+    },
+    {
+      "id": "usr_player_4",
+      "player_id": "BHUK-100004",
+      "username": "Vikram",
+      "email": "vikram@bhukhara.app",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1500,
+      "status": "active",
+      "created_at": "2026-08-10T16:45:00.000Z",
+      "updated_at": "2026-09-05T17:02:02.124Z"
+    }
+  ],
+  "adjustments": [],
+  "sessions": {}
+}
