@@ -115,9 +115,26 @@ if (authBc) {
   };
 }
 
-function getApiUrl(): string {
-  const host = typeof window !== 'undefined' && window.location ? window.location.hostname || 'localhost' : 'localhost';
-  return `http://${host}:3001/api`;
+export function getApiUrl(): string {
+  if (typeof window !== 'undefined') {
+    const customUrl = localStorage.getItem('bhukhara_custom_backend_url');
+    if (customUrl && customUrl.trim()) {
+      const clean = customUrl.trim();
+      return clean.endsWith('/api') ? clean : `${clean.replace(/\/$/, '')}/api`;
+    }
+
+    const envUrl = (import.meta as any).env?.VITE_BACKEND_URL;
+    if (envUrl && envUrl.trim()) {
+      const clean = envUrl.trim();
+      return clean.endsWith('/api') ? clean : `${clean.replace(/\/$/, '')}/api`;
+    }
+
+    const host = window.location ? window.location.hostname || 'localhost' : 'localhost';
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) {
+      return `http://${host}:3001/api`;
+    }
+  }
+  return `http://localhost:3001/api`;
 }
 
 export async function syncDataWithBackendServer(): Promise<void> {
@@ -202,6 +219,21 @@ export async function syncDataWithBackendServer(): Promise<void> {
 }
 
 export const authBackend = {
+  getApiUrl(): string {
+    return getApiUrl();
+  },
+
+  setCustomApiUrl(url: string): void {
+    if (typeof localStorage !== 'undefined') {
+      if (!url || !url.trim()) {
+        localStorage.removeItem('bhukhara_custom_backend_url');
+      } else {
+        localStorage.setItem('bhukhara_custom_backend_url', url.trim());
+      }
+      syncDataWithBackendServer();
+    }
+  },
+
   initDatabase(): void {
     try {
       if (!localStorage.getItem(STORAGE_USERS)) {

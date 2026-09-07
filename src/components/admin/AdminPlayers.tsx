@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { User } from '../../types/auth';
-import { authBackend } from '../../services/authBackend';
-import { Search, Filter, ArrowUpDown, Coins, CheckCircle2, XCircle, UserPlus, X } from 'lucide-react';
+import { authBackend, syncDataWithBackendServer } from '../../services/authBackend';
+import { Search, Filter, ArrowUpDown, Coins, CheckCircle2, XCircle, UserPlus, X, Globe, RefreshCw } from 'lucide-react';
 
 interface AdminPlayersProps {
   onSelectPlayerForCoins: (player: User) => void;
@@ -20,6 +20,12 @@ export const AdminPlayers: React.FC<AdminPlayersProps> = ({ onSelectPlayerForCoi
   const [newPassword, setNewPassword] = useState('player123');
   const [addError, setAddError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Modal State for Server API Settings
+  const [showApiModal, setShowApiModal] = useState(false);
+  const [apiUrlInput, setApiUrlInput] = useState(authBackend.getApiUrl());
+  const [apiSaveMsg, setApiSaveMsg] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const loadPlayers = () => {
     let allUsers = authBackend.getUsers().filter(u => u.role === 'player');
@@ -76,21 +82,107 @@ export const AdminPlayers: React.FC<AdminPlayersProps> = ({ onSelectPlayerForCoi
     }
   };
 
+  const handleSaveApiUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setApiSaveMsg('');
+    setIsSyncing(true);
+    authBackend.setCustomApiUrl(apiUrlInput);
+    await syncDataWithBackendServer();
+    setIsSyncing(false);
+    setApiSaveMsg('✅ API URL saved! Local players synchronized with central backend database.');
+    loadPlayers();
+  };
+
+  const handleForceSyncNow = async () => {
+    setIsSyncing(true);
+    setApiSaveMsg('');
+    await syncDataWithBackendServer();
+    setIsSyncing(false);
+    setApiSaveMsg('✅ Synchronized! Database reloaded.');
+    loadPlayers();
+  };
+
   return (
     <div className="admin-players-view">
-      <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 className="page-title">Player Management</h1>
           <p className="page-subtitle">View players, search balances, and adjust virtual coins</p>
         </div>
-        <button
-          className="btn-primary"
-          onClick={() => { setShowAddModal(true); setAddError(''); }}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#d4af37', color: '#000', fontWeight: 800, borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-        >
-          <UserPlus size={18} /> ADD NEW PLAYER
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            className="btn-secondary"
+            onClick={() => { setShowApiModal(true); setApiSaveMsg(''); setApiUrlInput(authBackend.getApiUrl()); }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px', background: 'rgba(255,255,255,0.08)', color: '#fff', fontWeight: 700, borderRadius: '8px', border: '1px solid #444', cursor: 'pointer' }}
+          >
+            <Globe size={16} /> SERVER API
+          </button>
+          <button
+            className="btn-primary"
+            onClick={() => { setShowAddModal(true); setAddError(''); }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', background: '#d4af37', color: '#000', fontWeight: 800, borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+          >
+            <UserPlus size={18} /> ADD NEW PLAYER
+          </button>
+        </div>
       </div>
+
+      {/* Server API Settings Modal */}
+      {showApiModal && (
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content" style={{ background: '#0a221a', border: '2px solid #d4af37', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '480px', color: '#fff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0, color: '#f1c40f', fontSize: '1.2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Globe size={20} /> Central Backend API Settings
+              </h3>
+              <button onClick={() => setShowApiModal(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.85rem', color: '#ccc', marginBottom: '16px', lineHeight: 1.5 }}>
+              Connect your Vercel frontend or mobile devices to your central live backend server URL (e.g. Render / Railway / Cloud IP).
+            </p>
+
+            {apiSaveMsg && (
+              <div style={{ background: 'rgba(46, 204, 113, 0.2)', border: '1px solid #2ecc71', color: '#2ecc71', padding: '10px', borderRadius: '6px', fontSize: '0.85rem', marginBottom: '14px' }}>
+                {apiSaveMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveApiUrl} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#ccc', fontWeight: 700, display: 'block', marginBottom: '4px' }}>BACKEND API URL</label>
+                <input
+                  type="text"
+                  placeholder="e.g. https://bhukhara-backend.onrender.com/api"
+                  value={apiUrlInput}
+                  onChange={e => setApiUrlInput(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '6px', background: 'rgba(0,0,0,0.5)', border: '1px solid #444', color: '#fff', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={handleForceSyncNow}
+                  disabled={isSyncing}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '6px', border: '1px solid #d4af37', background: 'transparent', color: '#d4af37', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  <RefreshCw size={14} className={isSyncing ? 'spin' : ''} /> {isSyncing ? 'Syncing...' : 'Sync Database Now'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSyncing}
+                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', background: '#d4af37', color: '#000', fontWeight: 800, cursor: 'pointer' }}
+                >
+                  SAVE & CONNECT
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add Player Modal */}
       {showAddModal && (
