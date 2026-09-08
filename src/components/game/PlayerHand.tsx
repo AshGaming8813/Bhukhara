@@ -14,10 +14,11 @@ export const PlayerHand: React.FC = () => {
   const count = humanPlayer.hand.length;
   const getOverlapMargin = (index: number): string => {
     if (index === 0) return '0px';
-    if (count <= 6) return '-8px';
-    if (count <= 10) return '-14px';
-    if (count <= 14) return '-18px';
-    return '-22px';
+    if (count <= 4) return '-4px';
+    if (count <= 7) return '-10px';
+    if (count <= 10) return '-16px';
+    if (count <= 13) return '-22px';
+    return '-26px';
   };
 
   return (

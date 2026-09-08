@@ -16,16 +16,17 @@ import {
   isValidSeries,
   isValidTriplicate,
   canCardsFitCombination,
+  canJokerCompleteSevenCardCombination,
   validateModa,
   sortCardsByRank,
   sortCardsBySuit,
 } from '../engine/validation';
-import { calculateBazziScores } from '../engine/scoring';
+import { calculateBazziScores, calculateCombinationPoints } from '../engine/scoring';
 import { getAIDecision, selectSmartAIDiscardCard, getPublicSeenCardCounts } from '../engine/ai';
 import { soundEngine } from '../engine/sound';
 import { saveGameState, loadGameState, clearGameState } from '../utils/storage';
 import confetti from 'canvas-confetti';
-import { onlineEngine } from '../services/onlineEngine';
+import { onlineEngine, getStoredPlayerId } from '../services/onlineEngine';
 
 interface GameContextType {
   state: GameState;
@@ -100,10 +101,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setOnlineGameState = useCallback((newState: GameState) => {
     setState(prev => {
       // 1. Determine correct client local identity slotId ('P1', 'P2', etc.)
-      const isNewSession = !prev.gameSessionId || prev.gameSessionId !== newState.gameSessionId || prev.onlineRoomCode !== newState.onlineRoomCode;
-      const clientLocalId = (isNewSession || !prev.localPlayerId)
-        ? (newState.localPlayerId || prev.localPlayerId || 'P1')
-        : (prev.localPlayerId || newState.localPlayerId || 'P1');
+      // CRITICAL FIX: NEVER overwrite a client's existing localPlayerId (e.g. P2/P3/P4) with another player's broadcast ID!
+      let clientLocalId = prev.localPlayerId;
+
+      if (!clientLocalId && newState.playerSeats) {
+        const myStoredId = getStoredPlayerId();
+        const foundSeat = Object.keys(newState.playerSeats).find(
+          seat => newState.playerSeats?.[seat] === myStoredId
+        );
+        if (foundSeat) clientLocalId = foundSeat;
+      }
+
+      if (!clientLocalId) {
+        clientLocalId = (prev.localPlayerId || (newState.localPlayerId !== 'P1' ? newState.localPlayerId : undefined) || 'P1');
+      }
+
+      // Clear card selections when turn changes to avoid referencing missing card IDs across players
+      if (prev.currentTurnIndex !== newState.currentTurnIndex) {
+        setSelectedCardIds([]);
+      }
 
       // 2. Authoritative Version Filter: Ignore older out-of-order states for same session
       if (prev.isOnlineMode && newState.gameSessionId && prev.gameSessionId === newState.gameSessionId) {
@@ -117,7 +133,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      console.log(`[REALTIME RECEIVED] roomCode: ${newState.onlineRoomCode} version: ${newState.version} gameSessionId: ${newState.gameSessionId}`);
+      console.log(`[REALTIME RECEIVED] roomCode: ${newState.onlineRoomCode} version: ${newState.version} localPlayerId: ${clientLocalId}`);
       console.log(`[PUBLIC STATE APPLIED] version: ${newState.version} openedCombinations: ${Object.values(newState.combinations || {}).flat().length} currentTurn: ${newState.currentTurnPlayerId}`);
 
       const mergedState: GameState = {
@@ -267,9 +283,75 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  /**
+   * Automatically applies Jokers from players' hands to complete 6-card combinations to 7 cards on their team board.
+   * Called BEFORE finalizing Bazzi scores when 2nd Moda / end of Bazzi occurs.
+   */
+  const processAutomaticJokerCompletions = (
+    players: Record<string, Player>,
+    combinations: Record<string, Combination[]>,
+    gameMode: GameMode
+  ): { updatedPlayers: Record<string, Player>; updatedCombinations: Record<string, Combination[]> } => {
+    const updatedPlayers = { ...players };
+    const updatedCombinations = { ...combinations };
+
+    Object.keys(updatedPlayers).forEach(pid => {
+      const player = updatedPlayers[pid];
+      if (!player || !player.hand || player.hand.length === 0) return;
+
+      const jokersInHand = player.hand.filter(c => c.isJoker);
+      if (jokersInHand.length === 0) return;
+
+      const teamKey = getTeamKey(player, gameMode);
+      let teamCombs = updatedCombinations[teamKey] ? [...updatedCombinations[teamKey]] : [];
+
+      let currentHand = [...player.hand];
+
+      for (const joker of jokersInHand) {
+        const completionTarget = canJokerCompleteSevenCardCombination(joker, teamCombs);
+        if (completionTarget) {
+          const targetComb = completionTarget.combination;
+          const newCombinedCards = sortCardsByRank([...targetComb.cards, joker]);
+          const hasJokerInComb = newCombinedCards.some(c => c.isJoker);
+          const updatedType = (targetComb.type === 'PURE_SERIES' && hasJokerInComb) ? 'SERIES' : targetComb.type;
+
+          const updatedComb: Combination = {
+            ...targetComb,
+            cards: newCombinedCards,
+            type: updatedType,
+            isCompleted: true,
+            points: calculateCombinationPoints({
+              ...targetComb,
+              cards: newCombinedCards,
+              type: updatedType,
+            }),
+          };
+
+          teamCombs = teamCombs.map(c => c.id === targetComb.id ? updatedComb : c);
+          currentHand = currentHand.filter(c => c.id !== joker.id);
+        }
+      }
+
+      updatedCombinations[teamKey] = teamCombs;
+      updatedPlayers[pid] = {
+        ...player,
+        hand: currentHand,
+      };
+    });
+
+    return { updatedPlayers, updatedCombinations };
+  };
+
   const endBazzi = useCallback((currentState: GameState, winningTeamId: string) => {
     soundEngine.playWin();
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+    // Process automatic Joker 6-to-7 card completions before finalizing Bazzi scores
+    const { updatedPlayers: autoPlayers, updatedCombinations: autoCombs } = processAutomaticJokerCompletions(
+      currentState.players,
+      currentState.combinations,
+      currentState.gameMode
+    );
 
     const teamIds = currentState.gameMode === '2P' ? ['P1', 'P2'] : ['A', 'B'];
 
@@ -277,21 +359,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     teamIds.forEach(tId => {
       handsByTeam[tId] = [];
     });
-    Object.values(currentState.players).forEach(p => {
-      const tId = getTeamKey(p, currentState.gameMode);
-      handsByTeam[tId].push(...p.hand);
+    Object.values(autoPlayers).forEach(p => {
+      if (p) {
+        const tId = getTeamKey(p, currentState.gameMode);
+        handsByTeam[tId].push(...p.hand);
+      }
     });
 
     const modasByTeam: Record<string, number> = {};
     teamIds.forEach(tId => {
       modasByTeam[tId] = 0;
     });
-    Object.values(currentState.players).forEach(p => {
-      const tId = getTeamKey(p, currentState.gameMode);
-      modasByTeam[tId] += p.modaCount;
+    Object.values(autoPlayers).forEach(p => {
+      if (p) {
+        const tId = getTeamKey(p, currentState.gameMode);
+        modasByTeam[tId] += p.modaCount;
+      }
     });
 
-    const bScores = calculateBazziScores(teamIds, currentState.combinations, handsByTeam, modasByTeam);
+    const bScores = calculateBazziScores(teamIds, autoCombs, handsByTeam, modasByTeam);
 
     const bazziRes: BazziResult = {
       bazziNumber: currentState.currentBazzi,
@@ -594,11 +680,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const newCombinedCards = sortCardsByRank([...currentTargetComb.cards, ...selectedCards]);
       const hasJokerInComb = newCombinedCards.some(c => c.isJoker);
+      const isCompleted = newCombinedCards.length >= 7;
+
+      const updatedType = (currentTargetComb.type === 'PURE_SERIES' && hasJokerInComb) ? 'SERIES' : currentTargetComb.type;
 
       const updatedComb: Combination = {
         ...currentTargetComb,
         cards: newCombinedCards,
-        type: (currentTargetComb.type === 'PURE_SERIES' && hasJokerInComb) ? 'SERIES' : currentTargetComb.type,
+        type: updatedType,
+        isCompleted,
+        points: calculateCombinationPoints({
+          ...currentTargetComb,
+          cards: newCombinedCards,
+          type: updatedType,
+        }),
       };
 
       const updatedCombs = currentTeamCombs.map(c => (c.id === targetCombId ? updatedComb : c));
@@ -720,14 +815,27 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     soundEngine.playMeldOpen();
 
     const isPure = isValidPureSeries(selectedCards);
+    const sortedSelected = sortCardsByRank(selectedCards);
+    const combType = isPure ? 'PURE_SERIES' : 'SERIES';
+    const isCompleted = sortedSelected.length >= 7;
+
     const newComb: Combination = {
       id: `comb_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      type: isPure ? 'PURE_SERIES' : 'SERIES',
-      cards: sortCardsByRank(selectedCards),
+      type: combType,
+      cards: sortedSelected,
       suit: selectedCards.find(c => !c.isJoker)?.suit || selectedCards[0].suit,
       rank: null,
       ownerId: teamKey,
-      points: 0,
+      isCompleted,
+      points: calculateCombinationPoints({
+        id: '',
+        type: combType,
+        cards: sortedSelected,
+        suit: selectedCards.find(c => !c.isJoker)?.suit || selectedCards[0].suit,
+        rank: null,
+        ownerId: teamKey,
+        points: 0,
+      }),
     };
 
     console.log(`[OPEN SERIES REQUEST] roomCode: ${state.onlineRoomCode} sessionId: ${state.gameSessionId} playerId: ${activeId} selectedCards:`, selectedCards.map(c => `${c.rank}${c.suit}`));
@@ -863,6 +971,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     soundEngine.playMeldOpen();
 
     const nonJoker = selectedCards.find(c => !c.isJoker);
+    const isCompleted = selectedCards.length >= 7;
 
     const newComb: Combination = {
       id: `comb_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -871,7 +980,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       suit: null,
       rank: nonJoker?.rank || selectedCards[0].rank,
       ownerId: teamKey,
-      points: 0,
+      isCompleted,
+      points: calculateCombinationPoints({
+        id: '',
+        type: 'TRIPLICATE',
+        cards: selectedCards,
+        suit: null,
+        rank: nonJoker?.rank || selectedCards[0].rank,
+        ownerId: teamKey,
+        points: 0,
+      }),
     };
 
     console.log(`[OPEN TRIPLICATE REQUEST] roomCode: ${state.onlineRoomCode} sessionId: ${state.gameSessionId} playerId: ${activeId} selectedCards:`, selectedCards.map(c => `${c.rank}${c.suit}`));
@@ -1195,7 +1313,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const currentActiveP = prev.players[currentActiveId];
         const currentTeamKey = getTeamKey(currentActiveP, prev.gameMode);
 
-        const updatedPlayers = {
+        const initialPlayers = {
           ...prev.players,
           [currentActiveId]: {
             ...currentActiveP,
@@ -1203,6 +1321,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             modaCount: ((currentActiveP ? currentActiveP.modaCount : 0) || 0) + 1,
           },
         };
+
+        // Process automatic Joker 6-to-7 card completions before finalizing Bazzi scores when 2nd Moda is claimed
+        const { updatedPlayers, updatedCombinations } = processAutomaticJokerCompletions(
+          initialPlayers,
+          prev.combinations,
+          prev.gameMode
+        );
 
         const teamIds = prev.gameMode === '2P' ? ['P1', 'P2'] : ['A', 'B'];
 
@@ -1224,7 +1349,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
 
-        const bScores = calculateBazziScores(teamIds, prev.combinations, handsByTeam, modasByTeam);
+        const bScores = calculateBazziScores(teamIds, updatedCombinations, handsByTeam, modasByTeam);
 
         const bazziRes: BazziResult = {
           bazziNumber: prev.currentBazzi,
@@ -1246,6 +1371,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...prev,
           modaCount: 2,
           players: updatedPlayers,
+          combinations: updatedCombinations,
           bazziResults: updatedBazziResults,
           phase: 'GAME_OVER',
           winner: overallWinner,

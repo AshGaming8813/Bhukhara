@@ -31,6 +31,7 @@ export interface Combination {
   rank: Rank | null;
   ownerId: string; // Team 'A'/'B' or Player 'P1'/'P2'
   points: number;
+  isCompleted?: boolean;
 }
 
 export interface Player {

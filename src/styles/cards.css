@@ -1,8 +1,16 @@
-/* Card Component Styling */
+/* Central Responsive Playing Card Styling System */
+:root {
+  --card-aspect-ratio: 1.41;
+  --card-w-normal: clamp(44px, 5.8vw, 68px);
+  --card-h-normal: calc(var(--card-w-normal) * var(--card-aspect-ratio));
+  --card-w-small: clamp(34px, 4.4vw, 48px);
+  --card-h-small: calc(var(--card-w-small) * var(--card-aspect-ratio));
+}
+
 .card {
   position: relative;
-  width: 64px;
-  height: 94px;
+  width: var(--card-w-normal);
+  height: var(--card-h-normal);
   background: linear-gradient(135deg, #ffffff 0%, #f1f2f6 100%);
   border-radius: 8px;
   border: 1.5px solid #dcdde1;
@@ -10,11 +18,12 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 4px;
+  padding: 3px 4px;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
   flex-shrink: 0;
   user-select: none;
+  box-sizing: border-box;
 }
 
 .card:hover {
@@ -29,9 +38,9 @@
 }
 
 .card-small {
-  width: 42px;
-  height: 62px;
-  padding: 2px;
+  width: var(--card-w-small);
+  height: var(--card-h-small);
+  padding: 2px 3px;
   border-radius: 5px;
 }
 
@@ -51,20 +60,22 @@
 }
 
 .card-rank {
-  font-size: 0.85rem;
+  font-size: clamp(0.65rem, 1.1vw, 0.9rem);
   font-weight: 800;
+  line-height: 1;
 }
 
 .card-small .card-rank {
-  font-size: 0.7rem;
+  font-size: clamp(0.55rem, 0.9vw, 0.75rem);
 }
 
 .card-suit-icon {
-  font-size: 0.75rem;
+  font-size: clamp(0.6rem, 1vw, 0.8rem);
+  line-height: 1;
 }
 
 .card-small .card-suit-icon {
-  font-size: 0.6rem;
+  font-size: clamp(0.5rem, 0.8vw, 0.65rem);
 }
 
 .card-center {
@@ -75,11 +86,13 @@
 }
 
 .card-main-symbol {
-  font-size: 1.5rem;
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  line-height: 1;
 }
 
 .card-small .card-main-symbol {
-  font-size: 1rem;
+  font-size: clamp(0.8rem, 1.4vw, 1.1rem);
+  line-height: 1;
 }
 
 /* Joker Card Visuals */
@@ -96,11 +109,11 @@
 }
 
 .joker-icon {
-  font-size: 1rem;
+  font-size: clamp(0.7rem, 1.2vw, 1rem);
 }
 
 .joker-text {
-  font-size: 0.5rem;
+  font-size: clamp(0.42rem, 0.6vw, 0.55rem);
   font-weight: 900;
   letter-spacing: 0.5px;
 }
@@ -110,7 +123,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 1.8rem;
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
   font-weight: 900;
   opacity: 0.15;
   color: var(--gold-primary);
@@ -143,15 +156,20 @@
 
 .card-back-logo {
   color: var(--gold-primary);
-  font-size: 1rem;
+  font-size: clamp(0.75rem, 1.2vw, 1rem);
 }
 
-@media (max-height: 750px) {
-  .card {
-    width: 56px;
-    height: 82px;
+/* Media Query Overrides for Mobile & Viewport Safe Areas */
+@media (max-width: 480px) {
+  :root {
+    --card-w-normal: clamp(38px, 9.5vw, 48px);
+    --card-w-small: clamp(32px, 8vw, 40px);
   }
-  .card-main-symbol {
-    font-size: 1.2rem;
+}
+
+@media (max-height: 600px) {
+  :root {
+    --card-w-normal: clamp(36px, 7vw, 46px);
+    --card-w-small: clamp(30px, 5.5vw, 38px);
   }
 }

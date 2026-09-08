@@ -207,3 +207,94 @@ export function validateModa(
     isFoul: false,
   };
 }
+
+export interface JokerCompletionTarget {
+  combinationId: string;
+  combination: Combination;
+  jokerCard: Card;
+  scoreValue: number; // 20 or 10
+  isSameSuitSeries: boolean;
+}
+
+/**
+ * Checks if a Joker card can legally complete any existing 6-card combination to 7 cards.
+ * Returns priority-sorted list of valid completion targets.
+ */
+export function findJokerCompletionTargets(
+  jokerCard: Card,
+  targetCombinations: Combination[]
+): JokerCompletionTarget[] {
+  if (!jokerCard || !jokerCard.isJoker || !targetCombinations || targetCombinations.length === 0) {
+    return [];
+  }
+
+  const targets: JokerCompletionTarget[] = [];
+
+  for (const comb of targetCombinations) {
+    if (!comb || !comb.cards || comb.cards.length !== 6) {
+      continue;
+    }
+
+    // Must not already contain a Joker (max 1 Joker per combination rule)
+    const existingJokers = comb.cards.filter(c => c.isJoker).length;
+    if (existingJokers > 0) {
+      continue;
+    }
+
+    const candidateCards = [...comb.cards, jokerCard];
+
+    if (comb.type === 'PURE_SERIES' || comb.type === 'SERIES') {
+      if (isValidSeries(candidateCards)) {
+        const nonJokers = comb.cards.filter(c => !c.isJoker);
+        const seriesSuit = nonJokers[0]?.suit || comb.suit;
+        const isSameSuit = seriesSuit && jokerCard.suit === seriesSuit;
+        const scoreValue = isSameSuit ? 20 : 10;
+
+        targets.push({
+          combinationId: comb.id,
+          combination: comb,
+          jokerCard,
+          scoreValue,
+          isSameSuitSeries: !!isSameSuit,
+        });
+      }
+    } else if (comb.type === 'TRIPLICATE') {
+      if (isValidTriplicate(candidateCards)) {
+        targets.push({
+          combinationId: comb.id,
+          combination: comb,
+          jokerCard,
+          scoreValue: 10,
+          isSameSuitSeries: false,
+        });
+      }
+    }
+  }
+
+  // Priority sorting (Part 7):
+  // 1. Higher scoreValue (20 before 10)
+  // 2. Same-suit series (true before false)
+  // 3. Deterministic tie-breaker by combinationId ascending
+  targets.sort((a, b) => {
+    if (b.scoreValue !== a.scoreValue) {
+      return b.scoreValue - a.scoreValue;
+    }
+    if (a.isSameSuitSeries !== b.isSameSuitSeries) {
+      return a.isSameSuitSeries ? -1 : 1;
+    }
+    return a.combinationId.localeCompare(b.combinationId);
+  });
+
+  return targets;
+}
+
+/**
+ * Checks if a player holding a Joker in hand can complete any available team combination to 7 cards.
+ */
+export function canJokerCompleteSevenCardCombination(
+  jokerCard: Card,
+  teamCombinations: Combination[]
+): JokerCompletionTarget | null {
+  const targets = findJokerCompletionTargets(jokerCard, teamCombinations);
+  return targets.length > 0 ? targets[0] : null;
+}
