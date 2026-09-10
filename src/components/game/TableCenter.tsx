@@ -40,6 +40,20 @@ export const TableCenter: React.FC = () => {
 
   return (
     <div className="table-center-area mockup-center-area">
+      {/* 2-Bazzi Mode Badge & Lead Status Indicator */}
+      {state.bazziMode === 2 && (
+        <div className="bazzi-mode-tracker-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '6px' }}>
+          <span style={{ background: 'rgba(212, 175, 55, 0.25)', border: '1px solid #d4af37', padding: '2px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 900, color: '#f1c40f' }}>
+            🏆 BAZZI {state.currentBazzi || 1} OF 2
+          </span>
+          {state.currentBazzi === 2 && state.leadScore && (
+            <span style={{ background: 'rgba(46, 204, 113, 0.25)', border: '1px solid #2ecc71', padding: '2px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 800, color: '#2ecc71' }}>
+              📊 Bazzi 1 Lead: {Object.entries(state.leadScore).map(([team, val]) => `${team}: ${val >= 0 ? '+' : ''}${val.toFixed(1)}`).join(' · ')}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* 4P & 2P Turn Sequence Tracker */}
       <div className="turn-sequence-tracker" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '8px' }}>
         {playerOrder.map((pid, idx) => {

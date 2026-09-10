@@ -37,6 +37,22 @@ export function getStoredPlayerId(): string {
   }
 }
 
+export function getStoredSlotId(): string | null {
+  try {
+    return sessionStorage.getItem('bhukhara_local_slot_id');
+  } catch (e) {
+    return null;
+  }
+}
+
+export function setStoredSlotId(slotId: string): void {
+  try {
+    sessionStorage.setItem('bhukhara_local_slot_id', slotId);
+  } catch (e) {
+    console.warn('Storage error:', e);
+  }
+}
+
 export function getStoredDisplayName(): string {
   try {
     return localStorage.getItem('bhukhara_display_name') || 'Player';
@@ -401,6 +417,7 @@ export const onlineEngine = {
     const playerId = getStoredPlayerId();
     setStoredDisplayName(displayName);
     const roomCode = generateRoomCode();
+    setStoredSlotId('P1');
 
     const maxPlayers = gameMode === '2P' ? 2 : 4;
     const hostPlayer: OnlinePlayer = {
@@ -474,6 +491,7 @@ export const onlineEngine = {
       room.players[playerId].connected = true;
       room.players[playerId].displayName = displayName;
       room.players[playerId].lastSeen = Date.now();
+      setStoredSlotId(room.players[playerId].slotId);
       room.updatedAt = Date.now();
       notifyRoomUpdate(room.roomCode);
       return { success: true, playerId };
@@ -500,6 +518,7 @@ export const onlineEngine = {
 
     const seat = currentCount;
     const slotId: 'P1' | 'P2' | 'P3' | 'P4' = (`P${seat + 1}`) as any;
+    setStoredSlotId(slotId);
     const team: 'A' | 'B' = (slotId === 'P1' || slotId === 'P3') ? 'A' : 'B';
 
     const newPlayer: OnlinePlayer = {

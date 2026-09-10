@@ -51,7 +51,8 @@ export const CombinationBoard: React.FC<CombinationBoardProps> = ({ teamKey, tit
   const myTeam = myPlayer ? myPlayer.team : 'A';
   const isHumanTeam = state.isOnlineMode ? (teamKey === myPlayerId || teamKey === myTeam) : (teamKey === 'P1' || teamKey === 'A');
 
-  const boardOwner = players[teamKey] || (isHumanTeam ? humanPlayer : players['P2']);
+  const opponentSlot = playerOrder.find(id => id !== myPlayerId) || 'P2';
+  const boardOwner = players[teamKey] || (isHumanTeam ? humanPlayer : players[opponentSlot]);
   const isOwnerP1 = boardOwner?.id === myPlayerId;
   const coinsText = isOwnerP1 ? '🪙 1,250' : '🪙 980';
 
@@ -84,7 +85,7 @@ export const CombinationBoard: React.FC<CombinationBoardProps> = ({ teamKey, tit
               {boardOwner ? boardOwner.name : (isHumanTeam ? 'Player 1' : 'Player 2')} {isHumanTeam ? '👑' : ''}
             </span>
             <span className="player-sub-tag">
-              {isHumanTeam ? `${myPlayerId} · You` : 'P2'}
+              {isHumanTeam ? `${myPlayerId} · You` : (boardOwner?.id || opponentSlot)}
               <span className="hand-count-pill-tag" title="Cards in hand">🎴 {handCardsInfo}</span>
               <span className="coins-pill-text">{coinsText}</span>
             </span>

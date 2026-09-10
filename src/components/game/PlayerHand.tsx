@@ -15,10 +15,10 @@ export const PlayerHand: React.FC = () => {
   const getOverlapMargin = (index: number): string => {
     if (index === 0) return '0px';
     if (count <= 4) return '-4px';
-    if (count <= 7) return '-10px';
-    if (count <= 10) return '-16px';
-    if (count <= 13) return '-22px';
-    return '-26px';
+    if (count <= 7) return '-12px';
+    if (count <= 10) return '-18px';
+    if (count <= 14) return '-24px';
+    return '-28px';
   };
 
   return (
@@ -70,7 +70,7 @@ export const PlayerHand: React.FC = () => {
                   card={card}
                   isSelected={isSelected}
                   onClick={() => selectCard(card.id)}
-                  small={true}
+                  small={false}
                 />
               </div>
             );

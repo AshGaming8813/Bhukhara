@@ -1325,9 +1325,9 @@
     padding: 1px 2px !important;
   }
   .cards-hand-compact-container {
-    justify-content: center !important;
-    padding: 4px 2px 2px 2px !important;
-    min-height: 60px !important;
+    justify-content: flex-start !important;
+    padding: 14px 6px 6px 6px !important;
+    min-height: 85px !important;
   }
   .hand-compact-header {
     margin-bottom: 1px !important;
@@ -1355,16 +1355,16 @@
     height: 10px !important;
   }
   .card {
-    width: 40px !important;
-    height: 58px !important;
-    padding: 1px !important;
-    border-radius: 4px !important;
+    width: var(--card-w-normal) !important;
+    height: var(--card-h-normal) !important;
+    padding: 2px !important;
+    border-radius: 6px !important;
   }
   .card-rank {
-    font-size: 0.65rem !important;
+    font-size: 0.72rem !important;
   }
   .card-suit-icon {
-    font-size: 0.55rem !important;
+    font-size: 0.65rem !important;
   }
 }
 

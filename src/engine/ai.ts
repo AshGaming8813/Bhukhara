@@ -434,7 +434,7 @@ export function getAIDecision(
   // ----------------------------------------------------
   if (hand.length === 1) {
     const lastCard = hand[0];
-    const modaCheck = validateModa(lastCard, allOpenCombinations);
+    const modaCheck = validateModa(lastCard, teamCombinations);
 
     if (modaCheck.isValid) {
       return {
