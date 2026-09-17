@@ -2486,6 +2486,201 @@
   font-weight: 800;
   color: var(--gold-light);
   background: rgba(212,175,55,0.15);
+  }
+
+  .panel-title-text {
+    font-size: 0.68rem !important;
+  }
+
+  .deck-card-box {
+    padding: 4px 6px !important;
+  }
+
+  .deck-stack-3d, .open-deck-stage-wrapper {
+    transform: scale(0.92);
+  }
+
+  .table-bottom-section {
+    padding: 4px 8px !important;
+    max-height: 125px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .bottom-layout-three-columns {
+    grid-template-columns: 1fr auto !important;
+    gap: 8px !important;
+  }
+
+  .game-info-side-box {
+    display: none !important;
+  }
+
+  .mockup-action-buttons-group {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+    max-width: none !important;
+  }
+
+  .btn-mockup-action {
+    height: 36px !important;
+    padding: 2px 6px !important;
+    min-width: 75px !important;
+  }
+
+  .btn-icon-circle {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .btn-main-label {
+    font-size: 0.72rem !important;
+  }
+
+  .btn-sub-label {
+    display: none !important;
+  }
+
+  .hand-container-box {
+    padding: 4px 6px !important;
+  }
+
+  .cards-hand-compact-container {
+    min-height: 60px !important;
+    padding: 4px !important;
+  }
+
+  .player-hand-scroll {
+    gap: 2px !important;
+    padding: 2px 0 !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NEW LAYOUT SYSTEM — Combinations DOMINANT
+   ═══════════════════════════════════════════════════════════ */
+
+/* Felt container: vertical column, combos fill everything */
+.table-felt-container {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 4px 6px !important;
+  gap: 4px !important;
+  overflow: hidden !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+}
+
+/* ── ROW 1: DOMINANT WORKSPACE (Combo 1 | Decks | Combo 2) ── */
+.table-combo-workspace {
+  flex: 1 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  width: 100% !important;
+}
+
+/* Combination panels fill their grid cell */
+.table-combo-workspace .comb-panel-container {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+}
+
+/* Combination body scrolls if needed */
+.table-combo-workspace .comb-panel-body {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
+
+/* ── CENTER DECKS COLUMN ── */
+.table-center-column {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  height: 100% !important;
+}
+
+.online-room-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+
+/* Scale down the decks slightly so they don't take too much width */
+.table-center-column .deck-card-box {
+  transform: scale(0.85) !important;
+  transform-origin: center !important;
+}
+
+/* ── ROW 2: Compact Hand ── */
+.table-hand-row {
+  flex-shrink: 0 !important;
+  margin-top: 4px !important;
+}
+
+.cards-hand-compact-container {
+  min-height: 55px !important;
+  padding: 2px !important;
+}
+
+.hand-compact-header {
+  margin-bottom: 2px !important;
+}
+
+/* ── ROW 3: Actions ── */
+.table-actions-row {
+  flex-shrink: 0 !important;
+}
+
+/* ── Pure Series Toast ── */
+.pure-series-toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #e67e22, #d35400);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  padding: 8px 20px;
+  border-radius: 24px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 12px rgba(230,126,34,0.5);
+  z-index: 9999;
+  animation: toast-slide-up 0.3s ease-out, toast-fade-out 0.4s ease-in 2.4s forwards;
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+
+@keyframes toast-slide-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes toast-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ── Compact hand count pill ── */
+.hand-count-pill {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--gold-light);
+  background: rgba(212,175,55,0.15);
   border: 1px solid rgba(212,175,55,0.4);
   border-radius: 10px;
   padding: 2px 8px;
@@ -2498,6 +2693,8 @@
   background: rgba(231,76,60,0.12);
   border: 1px solid rgba(231,76,60,0.3);
   border-radius: 8px;
+  padding: 1px 6px;
+}
 
 /* ── Compact action buttons ── */
 .btn-mockup-action {
