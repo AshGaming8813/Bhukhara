@@ -2323,9 +2323,9 @@
   .mockup-action-buttons-group {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
     gap: 4px !important;
-    max-width: 290px !important;
+    max-width: none !important;
   }
 
   .btn-mockup-action {
@@ -2498,8 +2498,6 @@
   background: rgba(231,76,60,0.12);
   border: 1px solid rgba(231,76,60,0.3);
   border-radius: 8px;
-  padding: 1px 6px;
-}
 
 /* ── Compact action buttons ── */
 .btn-mockup-action {
@@ -2527,7 +2525,7 @@
 
 .mockup-action-buttons-group {
   display: flex !important;
-  flex-wrap: wrap !important;
+  flex-wrap: nowrap !important;
   gap: 4px !important;
   justify-content: center !important;
   padding: 3px 4px !important;
@@ -2594,7 +2592,8 @@
 
 @media (max-width: 768px) {
   .unified-action-bar {
-    justify-content: center !important;
-    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
   }
 }

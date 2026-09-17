@@ -105,7 +105,7 @@ export const TableCenter: React.FC = () => {
                 className="open-deck-stage-wrapper"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (canDraw) takeFromOpenDeck(openDeck.length - 1);
+                  setIsOpenDeckExpanded(true);
                 }}
               >
                 <div className="open-deck-card-container">
@@ -144,6 +144,7 @@ export const TableCenter: React.FC = () => {
             <div
               className="open-deck-modal-backdrop"
               style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)' }}
+              onClick={() => setIsOpenDeckExpanded(false)}
             >
               <div
                 className="open-deck-viewer-overlay"
