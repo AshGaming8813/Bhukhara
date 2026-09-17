@@ -1,5 +1,7 @@
 import type { User, UserRole, UserSession } from '../types/auth';
 import type { DbCoinAdjustment, AdminDashboardMetrics, AdjustmentAction } from '../types/admin';
+import { ref, set, get, onValue } from 'firebase/database';
+import { db } from './firebaseConfig';
 
 const STORAGE_USERS = 'bhukhara_db_users';
 const STORAGE_ADJUSTMENTS = 'bhukhara_db_adjustments';
@@ -17,6 +19,26 @@ function hashPassword(pass: string): string {
   }
   return 'hash_' + Math.abs(hash).toString(16);
 }
+
+export function verifyUserPassword(user: User | null | undefined, pass: string): boolean {
+  if (!user || !pass) return false;
+  const inputHash = hashPassword(pass);
+  const userAny = user as any;
+
+  // 1. Direct salted hash match
+  if (user.password_hash && user.password_hash === inputHash) return true;
+
+  // 2. Plain text password_hash match
+  if (user.password_hash && user.password_hash === pass) return true;
+
+  // 3. Plain text password property match
+  if (userAny.password && (userAny.password === pass || userAny.password === inputHash)) return true;
+  if (userAny.password && hashPassword(userAny.password) === inputHash) return true;
+  if (userAny.pass && userAny.pass === pass) return true;
+
+  return false;
+}
+
 
 // Initial seed users
 const SEED_USERS: User[] = [
@@ -138,6 +160,88 @@ export function getApiUrl(): string {
 }
 
 export async function syncDataWithBackendServer(): Promise<void> {
+  // 1. Primary Cloud Storage: Firebase Realtime Database (Global Sync across Mobile APK & Web)
+  try {
+    const fbSnapshot = await get(ref(db, 'global_users'));
+    if (fbSnapshot.exists()) {
+      const fbUsersObj = fbSnapshot.val();
+      if (fbUsersObj && typeof fbUsersObj === 'object') {
+        const remoteFbUsers: User[] = Object.values(fbUsersObj);
+        const localUsers = authBackend.getUsersRaw();
+        let changed = false;
+
+        // Push local users to Firebase if missing in cloud
+        for (const lu of localUsers) {
+          if (lu.role === 'player' && lu.id !== 'usr_admin_1') {
+            const existsInFb = remoteFbUsers.some(
+              ru => ru.id === lu.id || ru.player_id === lu.player_id || (ru.email && lu.email && ru.email.toLowerCase() === lu.email.toLowerCase())
+            );
+            if (!existsInFb) {
+              set(ref(db, `global_users/${lu.id}`), lu).catch(() => {});
+              remoteFbUsers.push(lu);
+            }
+          }
+        }
+
+        // Merge remote Firebase users into local cache
+        remoteFbUsers.forEach(ru => {
+          const idx = localUsers.findIndex(
+            lu => lu.id === ru.id || lu.player_id === ru.player_id || (lu.email && ru.email && lu.email.toLowerCase() === ru.email.toLowerCase())
+          );
+          const ruAny = ru as any;
+          const mergedHash = ru.password_hash || (ruAny.password ? hashPassword(ruAny.password) : undefined);
+          if (idx === -1) {
+            localUsers.push({
+              ...ru,
+              password_hash: mergedHash || hashPassword('player123'),
+            });
+            changed = true;
+          } else {
+            if (
+              localUsers[idx].coin_balance !== ru.coin_balance ||
+              localUsers[idx].username !== ru.username ||
+              localUsers[idx].status !== ru.status ||
+              localUsers[idx].player_id !== ru.player_id
+            ) {
+              localUsers[idx] = {
+                ...localUsers[idx],
+                ...ru,
+                password_hash: mergedHash || localUsers[idx].password_hash || hashPassword('player123'),
+              };
+              changed = true;
+            }
+          }
+        });
+
+
+        if (changed || remoteFbUsers.length > localUsers.length) {
+          authBackend.saveUsers(localUsers);
+          notifyAuthEvent('USERS_SYNCED', localUsers);
+        }
+      }
+    } else {
+      const localUsers = authBackend.getUsersRaw();
+      localUsers.forEach(u => {
+        if (u.role === 'player') {
+          set(ref(db, `global_users/${u.id}`), u).catch(() => {});
+        }
+      });
+    }
+
+    const adjSnapshot = await get(ref(db, 'global_adjustments'));
+    if (adjSnapshot.exists()) {
+      const adjObj = adjSnapshot.val();
+      if (adjObj && typeof adjObj === 'object') {
+        const remoteAdj: DbCoinAdjustment[] = Object.values(adjObj);
+        authBackend.saveAdjustments(remoteAdj);
+        notifyAuthEvent('HISTORY_SYNCED', remoteAdj);
+      }
+    }
+  } catch (e) {
+    console.warn('Firebase auth sync warning:', e);
+  }
+
+  // 2. Secondary REST API fallback
   try {
     const apiUrl = getApiUrl();
     const playersRes = await fetch(`${apiUrl}/admin/players`);
@@ -145,9 +249,8 @@ export async function syncDataWithBackendServer(): Promise<void> {
       const data = await playersRes.json();
       if (data && Array.isArray(data.players)) {
         const remoteUsers: User[] = data.players;
-        const localUsers = authBackend.getUsers();
+        const localUsers = authBackend.getUsersRaw();
 
-        // 1. Sync local users that are not in remote DB to the server
         for (const lu of localUsers) {
           if (lu.role === 'player' && lu.email && lu.id !== 'usr_admin_1') {
             const existsInRemote = remoteUsers.some(
@@ -166,14 +269,11 @@ export async function syncDataWithBackendServer(): Promise<void> {
                     remoteUsers.push(syncData.user);
                   }
                 }
-              } catch (err) {
-                // Ignore background sync errors
-              }
+              } catch (err) {}
             }
           }
         }
 
-        // 2. Merge remote server users into local cache
         let changed = false;
         remoteUsers.forEach(ru => {
           const idx = localUsers.findIndex(
@@ -201,22 +301,10 @@ export async function syncDataWithBackendServer(): Promise<void> {
         }
       }
     }
-
-    const historyRes = await fetch(`${apiUrl}/admin/coin-history`);
-    if (historyRes.ok) {
-      const histData = await historyRes.json();
-      if (histData && Array.isArray(histData.history)) {
-        const remoteHist: DbCoinAdjustment[] = histData.history;
-        if (remoteHist.length > 0) {
-          authBackend.saveAdjustments(remoteHist);
-          notifyAuthEvent('HISTORY_SYNCED', remoteHist);
-        }
-      }
-    }
-  } catch (e) {
-    // Graceful offline fallback
-  }
+  } catch (e) {}
 }
+
+let isDbInitialized = false;
 
 export const authBackend = {
   getApiUrl(): string {
@@ -235,6 +323,9 @@ export const authBackend = {
   },
 
   initDatabase(): void {
+    if (isDbInitialized) return;
+    isDbInitialized = true;
+
     try {
       if (!localStorage.getItem(STORAGE_USERS)) {
         localStorage.setItem(STORAGE_USERS, JSON.stringify(SEED_USERS));
@@ -246,16 +337,79 @@ export const authBackend = {
       console.warn('Init auth DB warning:', e);
     }
 
-    syncDataWithBackendServer();
+    // Register Firebase real-time listeners for instant push across all APKs & website admin panel
+    if (typeof window !== 'undefined' && !(window as any).__bhukhara_fb_auth_listener) {
+      (window as any).__bhukhara_fb_auth_listener = true;
+      try {
+        onValue(ref(db, 'global_users'), snapshot => {
+          if (snapshot.exists()) {
+            const usersObj = snapshot.val();
+            if (usersObj && typeof usersObj === 'object') {
+              const cloudUsers: User[] = Object.values(usersObj);
+              const localUsers = authBackend.getUsersRaw();
+              let changed = false;
+
+              cloudUsers.forEach(cu => {
+                const idx = localUsers.findIndex(
+                  lu => lu.id === cu.id || lu.player_id === cu.player_id || (lu.email && cu.email && lu.email.toLowerCase() === cu.email.toLowerCase())
+                );
+                const cuAny = cu as any;
+                const mergedHash = cu.password_hash || (cuAny.password ? hashPassword(cuAny.password) : undefined);
+                if (idx === -1) {
+                  localUsers.push({
+                    ...cu,
+                    password_hash: mergedHash || hashPassword('player123'),
+                  });
+                  changed = true;
+                } else if (
+                  localUsers[idx].coin_balance !== cu.coin_balance ||
+                  localUsers[idx].username !== cu.username ||
+                  localUsers[idx].status !== cu.status
+                ) {
+                  localUsers[idx] = {
+                    ...localUsers[idx],
+                    ...cu,
+                    password_hash: mergedHash || localUsers[idx].password_hash || hashPassword('player123'),
+                  };
+                  changed = true;
+                }
+              });
+
+              if (changed || cloudUsers.length > localUsers.length) {
+                authBackend.saveUsers(localUsers);
+                notifyAuthEvent('USERS_SYNCED', localUsers);
+              }
+            }
+          }
+        });
+
+        onValue(ref(db, 'global_adjustments'), snapshot => {
+          if (snapshot.exists()) {
+            const adjObj = snapshot.val();
+            if (adjObj && typeof adjObj === 'object') {
+              const cloudAdj: DbCoinAdjustment[] = Object.values(adjObj);
+              authBackend.saveAdjustments(cloudAdj);
+              notifyAuthEvent('HISTORY_SYNCED', cloudAdj);
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('Firebase auth listener warning:', e);
+      }
+    }
+
+    setTimeout(() => {
+      syncDataWithBackendServer();
+    }, 200);
+
     if (typeof window !== 'undefined' && !(window as any).__bhukhara_sync_interval) {
       (window as any).__bhukhara_sync_interval = setInterval(() => {
         syncDataWithBackendServer();
-      }, 3000);
+      }, 5000);
     }
   },
 
-  getUsers(): User[] {
-    this.initDatabase();
+  getUsersRaw(): User[] {
     let users: User[] = [];
     try {
       users = JSON.parse(localStorage.getItem(STORAGE_USERS) || '[]');
@@ -263,8 +417,12 @@ export const authBackend = {
       users = [];
     }
 
+    if (!Array.isArray(users) || users.length === 0) {
+      users = [...SEED_USERS];
+    }
+
     // Guarantee SuperAdmin account exists with role === 'admin' and exact current password_hash
-    let adminIdx = users.findIndex(u => u.email.toLowerCase() === 'admin@bhukhara.app' || u.email.toLowerCase() === 'admin@bhukhara.com');
+    let adminIdx = users.findIndex(u => u.email && (u.email.toLowerCase() === 'admin@bhukhara.app' || u.email.toLowerCase() === 'admin@bhukhara.com'));
     const correctAdminHash = hashPassword('admin123');
 
     if (adminIdx === -1) {
@@ -280,7 +438,9 @@ export const authBackend = {
         created_at: '2026-01-01T00:00:00.000Z',
         updated_at: new Date().toISOString(),
       });
-      this.saveUsers(users);
+      try {
+        localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+      } catch {}
     } else {
       let updated = false;
       if (users[adminIdx].role !== 'admin') {
@@ -292,12 +452,20 @@ export const authBackend = {
         updated = true;
       }
       if (updated) {
-        this.saveUsers(users);
+        try {
+          localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+        } catch {}
       }
     }
 
     return users;
   },
+
+  getUsers(): User[] {
+    this.initDatabase();
+    return this.getUsersRaw();
+  },
+
 
   saveUsers(users: User[]): void {
     try {
@@ -428,6 +596,7 @@ export const authBackend = {
 
     users.push(newUser);
     this.saveUsers(users);
+    set(ref(db, `global_users/${newUser.id}`), newUser).catch(() => {});
 
     const session = this.createSession(newUser);
     notifyAuthEvent('USER_REGISTERED', newUser);
@@ -488,6 +657,7 @@ export const authBackend = {
 
     users.push(newUser);
     this.saveUsers(users);
+    set(ref(db, `global_users/${newUser.id}`), newUser).catch(() => {});
 
     const session = this.createSession(newUser);
     notifyAuthEvent('USER_REGISTERED', newUser);
@@ -529,13 +699,14 @@ export const authBackend = {
   ): { success: boolean; error?: string; session?: UserSession } {
     const users = this.getUsers();
     const cleanInput = emailOrUser.trim().toLowerCase();
-    const inputHash = hashPassword(pass);
 
     const user = users.find(
-      u => u.email.toLowerCase() === cleanInput || u.username.toLowerCase() === cleanInput || u.player_id.toLowerCase() === cleanInput
+      u => (u.email && u.email.toLowerCase() === cleanInput) ||
+           (u.username && u.username.toLowerCase() === cleanInput) ||
+           (u.player_id && u.player_id.toLowerCase() === cleanInput)
     );
 
-    if (!user || user.password_hash !== inputHash) {
+    if (!user || !verifyUserPassword(user, pass)) {
       return { success: false, error: 'Invalid credentials. Please check your username/email and password.' };
     }
 
@@ -547,6 +718,159 @@ export const authBackend = {
     const session = this.createSession(user);
     notifyAuthEvent('USER_LOGIN', session);
     return { success: true, session };
+  },
+
+  // Async Server & Cloud Authoritative Login
+  async loginAsync(
+    emailOrUser: string,
+    pass: string,
+    expectedRole?: UserRole
+  ): Promise<{ success: boolean; error?: string; session?: UserSession }> {
+    const cleanInput = emailOrUser.trim().toLowerCase();
+    const inputHash = hashPassword(pass);
+
+    // 1. Try local cache first
+    let users = this.getUsers();
+    let user = users.find(
+      u => (u.email && u.email.toLowerCase() === cleanInput) ||
+           (u.username && u.username.toLowerCase() === cleanInput) ||
+           (u.player_id && u.player_id.toLowerCase() === cleanInput)
+    );
+
+    // 2. If user not found locally or password verification fails, fetch from Firebase Realtime Database with 2s timeout
+    if (!user || !verifyUserPassword(user, pass)) {
+      try {
+        const fetchFb = get(ref(db, 'global_users'));
+        const timeoutPromise = new Promise<null>(res => setTimeout(() => res(null), 2000));
+        const fbSnapshot: any = await Promise.race([fetchFb, timeoutPromise]);
+
+        if (fbSnapshot && fbSnapshot.exists && fbSnapshot.exists()) {
+          const fbUsersObj = fbSnapshot.val();
+          if (fbUsersObj && typeof fbUsersObj === 'object') {
+            const remoteFbUsers: User[] = Object.values(fbUsersObj);
+            const currentLocalUsers = this.getUsers();
+            let changed = false;
+
+            remoteFbUsers.forEach(ru => {
+              const idx = currentLocalUsers.findIndex(
+                lu => lu.id === ru.id || lu.player_id === ru.player_id || (lu.email && ru.email && lu.email.toLowerCase() === ru.email.toLowerCase())
+              );
+              const ruAny = ru as any;
+              const mergedHash = ru.password_hash || (ruAny.password ? hashPassword(ruAny.password) : undefined);
+              if (idx === -1) {
+                currentLocalUsers.push({
+                  ...ru,
+                  password_hash: mergedHash || hashPassword('player123'),
+                });
+                changed = true;
+              } else {
+                currentLocalUsers[idx] = {
+                  ...currentLocalUsers[idx],
+                  ...ru,
+                  password_hash: mergedHash || currentLocalUsers[idx].password_hash || hashPassword('player123'),
+                };
+                changed = true;
+              }
+            });
+
+            if (changed) {
+              this.saveUsers(currentLocalUsers);
+            }
+            users = currentLocalUsers;
+            user = users.find(
+              u => (u.email && u.email.toLowerCase() === cleanInput) ||
+                   (u.username && u.username.toLowerCase() === cleanInput) ||
+                   (u.player_id && u.player_id.toLowerCase() === cleanInput)
+            );
+          }
+        }
+      } catch (e) {
+        console.warn('Firebase login fetch warning:', e);
+      }
+    }
+
+    // 3. If still not found or password verification fails, attempt REST API login with 2s timeout
+    if (!user || !verifyUserPassword(user, pass)) {
+      try {
+        const apiUrl = getApiUrl();
+        const fetchRest = fetch(`${apiUrl}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ loginId: cleanInput, password: pass }),
+        });
+        const timeoutPromise = new Promise<null>(res => setTimeout(() => res(null), 2000));
+        const res: any = await Promise.race([fetchRest, timeoutPromise]);
+
+        if (res && res.ok) {
+          const data = await res.json();
+          if (data.success && data.user) {
+            const serverUser: User = {
+              ...data.user,
+              password_hash: inputHash,
+            };
+            const currentLocalUsers = this.getUsers();
+            const idx = currentLocalUsers.findIndex(
+              u => u.id === serverUser.id || (u.email && serverUser.email && u.email.toLowerCase() === serverUser.email.toLowerCase())
+            );
+            if (idx !== -1) {
+              currentLocalUsers[idx] = serverUser;
+            } else {
+              currentLocalUsers.push(serverUser);
+            }
+            this.saveUsers(currentLocalUsers);
+            set(ref(db, `global_users/${serverUser.id}`), serverUser).catch(() => {});
+
+            if (expectedRole === 'admin' && serverUser.role !== 'admin') {
+              return { success: false, error: 'Access Denied. Account does not have administrator privileges.' };
+            }
+
+            const session = this.createSession(serverUser);
+            notifyAuthEvent('USER_LOGIN', session);
+            return { success: true, session };
+          }
+        }
+      } catch (err) {
+        console.warn('REST API login fetch warning:', err);
+      }
+    }
+
+    // 4. Validate final matched user
+    if (!user || !verifyUserPassword(user, pass)) {
+      return { success: false, error: 'Invalid credentials. Please check your username/email and password.' };
+    }
+
+    if (expectedRole === 'admin' && user.role !== 'admin') {
+      return { success: false, error: 'Access Denied. Account does not have administrator privileges.' };
+    }
+
+    const session = this.createSession(user);
+    notifyAuthEvent('USER_LOGIN', session);
+    return { success: true, session };
+  },
+
+
+  createGuestSession(): UserSession {
+    const guestUser: User = {
+      id: 'usr_guest_player',
+      player_id: 'BHUK-GUEST',
+      username: 'Guest Player',
+      email: 'guest@bhukhara.app',
+      password_hash: hashPassword('guest123'),
+      role: 'player',
+      coin_balance: 1000,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const users = this.getUsers();
+    const existingIdx = users.findIndex(u => u.id === guestUser.id || u.player_id === guestUser.player_id);
+    if (existingIdx === -1) {
+      users.push(guestUser);
+      this.saveUsers(users);
+    }
+    const session = this.createSession(guestUser);
+    notifyAuthEvent('USER_LOGIN', session);
+    return session;
   },
 
   createSession(user: User): UserSession {
@@ -707,6 +1031,8 @@ export const authBackend = {
 
     adjustments.unshift(adjustmentRecord);
     this.saveAdjustments(adjustments);
+    set(ref(db, `global_users/${targetUser.id}`), users[userIdx]).catch(() => {});
+    set(ref(db, `global_adjustments/${adjustmentRecord.id}`), adjustmentRecord).catch(() => {});
 
     notifyAuthEvent('COIN_ADJUSTED', { userId: targetUser.id, newBalance, adjustmentRecord });
 

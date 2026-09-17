@@ -1,9 +1,9 @@
 /* Central Responsive Playing Card Styling System */
 :root {
   --card-aspect-ratio: 1.41;
-  --card-w-normal: clamp(44px, 5.8vw, 68px);
+  --card-w-normal: clamp(36px, 4.4vw, 52px);
   --card-h-normal: calc(var(--card-w-normal) * var(--card-aspect-ratio));
-  --card-w-small: clamp(34px, 4.4vw, 48px);
+  --card-w-small: clamp(30px, 3.8vw, 42px);
   --card-h-small: calc(var(--card-w-small) * var(--card-aspect-ratio));
 }
 

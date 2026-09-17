@@ -106,7 +106,7 @@ export const GameTable: React.FC<GameTableProps> = ({
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginTop: '8px' }}>
               <button className="btn btn-gold btn-large" onClick={handleFullscreenAndRotate} style={{ width: '100%', justifyContent: 'center', gap: '8px' }}>
-                <Maximize2 size={18} /> ROTATE & PLAY FULLSCREEN
+                <Maximize2 size={18} /> ROTATE &amp; PLAY FULLSCREEN
               </button>
               <button className="btn btn-secondary btn-small" onClick={() => setDismissRotatePrompt(true)} style={{ width: '100%', justifyContent: 'center', opacity: 0.8, fontSize: '0.75rem' }}>
                 Continue in Portrait
@@ -119,9 +119,9 @@ export const GameTable: React.FC<GameTableProps> = ({
       {/* Top Header Bar */}
       <StatusHeader onOpenSettings={onOpenSettings} onConfirmRestart={onConfirmRestart} onConfirmLeave={onConfirmLeave} />
 
-      {/* Main Table Felt Container */}
+      {/* Main Table Felt */}
       <div className="table-felt-container">
-        {/* Real-time Emote Toast Overlay */}
+        {/* Emote Toast */}
         {activeEmote && (
           <div className="active-emote-toast animate-bounce-pop">
             <span className="emote-sender-name">{activeEmote.senderName}</span>
@@ -129,70 +129,75 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         )}
 
-        {/* Full Top-to-Bottom Table Body Section */}
-        <div className="table-middle-section full-height-body">
-          <div className="table-boards-area">
-            {is4P ? (
-              <>
-                <CombinationBoard teamKey="A" title="Team A Combinations (You & P3)" />
-                <TableCenter />
-                <CombinationBoard teamKey="B" title="Team B Combinations (P2 & P4)" />
-              </>
-            ) : (
-              <>
-                <CombinationBoard teamKey={myPlayerId} title={`Your Combinations (${myName})`} />
-                <TableCenter />
-                <CombinationBoard teamKey={opponentSlotId} title={`${opponentName}'s Combinations`} />
-              </>
+        {/* ── ROW 1: Player info + Central Decks ── */}
+        <div className="table-top-info-row">
+          {/* My Info Panel */}
+          <div className="player-info-chip my-info-chip">
+            <div className="info-chip-avatar info-chip-avatar--me">
+              <span>👑</span>
+            </div>
+            <div className="info-chip-text">
+              <span className="info-chip-name">{myName}</span>
+              <span className="info-chip-sub">
+                {myPlayerId}
+                <span className="info-chip-cards">
+                  🃏 {myPlayer?.hand?.length ?? 0}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          {/* Center: Decks */}
+          <div className="table-center-column">
+            {state.isOnlineMode && (
+              <div className="online-table-top-bar" style={{ marginBottom: '4px' }}>
+                <span className="online-room-tag">🟢 ONLINE #{state.onlineRoomCode}</span>
+                <EmotePicker onSendEmote={sendOnlineEmote} />
+              </div>
             )}
+            <TableCenter />
+          </div>
+
+          {/* Opponent Info Panel */}
+          <div className="player-info-chip opp-info-chip">
+            <div className="info-chip-avatar info-chip-avatar--opp">
+              <span>🤖</span>
+            </div>
+            <div className="info-chip-text">
+              <span className="info-chip-name">{opponentName}</span>
+              <span className="info-chip-sub">
+                {opponentSlotId}
+                <span className="info-chip-cards">
+                  🃏 {(opponentPlayer?.handCount ?? opponentPlayer?.hand?.length ?? 0)}
+                </span>
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Bottom Section: Human Player Hand, Action Controls & Game Info */}
-        <div className="table-bottom-section mockup-bottom-section">
-          {state.isOnlineMode && (
-            <div className="online-table-top-bar">
-              <span className="online-room-tag">🟢 ONLINE ROOM #{state.onlineRoomCode}</span>
-              <EmotePicker onSendEmote={sendOnlineEmote} />
-            </div>
+        {/* ── ROW 2: Large Combination Workspace ── */}
+        <div className="table-combo-workspace">
+          {is4P ? (
+            <>
+              <CombinationBoard teamKey="A" title="Team A Combinations (You &amp; P3)" />
+              <CombinationBoard teamKey="B" title="Team B Combinations (P2 &amp; P4)" />
+            </>
+          ) : (
+            <>
+              <CombinationBoard teamKey={myPlayerId} title={`Your Combinations (${myName})`} />
+              <CombinationBoard teamKey={opponentSlotId} title={`${opponentName}'s Combinations`} />
+            </>
           )}
+        </div>
 
-          <div className="bottom-layout-three-columns">
-            {/* Left Column: Player Hand */}
-            <div className="hand-container-box">
-              <div className="hand-box-header">
-                <span className="hand-title-text">Your Hand ({myPlayer?.hand?.length ?? 0} Cards)</span>
-                <span className="hand-info-icon" title="Tap cards to select, then click Open Series/Triplicate or Discard">ⓘ</span>
-              </div>
-              <PlayerHand />
-            </div>
+        {/* ── ROW 3: Compact Private Hand ── */}
+        <div className="table-hand-row">
+          <PlayerHand />
+        </div>
 
-            {/* Center Column: Action Control Buttons */}
-            <div className="actions-center-column">
-              <ActionPanel />
-            </div>
-
-            {/* Right Column: Game Info Box */}
-            <div className="game-info-side-box">
-              <div className="game-info-header">
-                <span className="info-title">ⓘ Game Info</span>
-              </div>
-              <div className="game-info-body">
-                <div className="info-row">
-                  <span className="info-label">Game Mode :</span>
-                  <span className="info-value">{state.gameMode === '4P' ? '4 Players' : '2 Players'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Bazzi Mode :</span>
-                  <span className="info-value">{state.bazziMode || 'Classic'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">First Turn :</span>
-                  <span className="info-value">{state.players[state.playerOrder[0]]?.name || 'Player 1 (You)'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* ── ROW 4: Action Buttons ── */}
+        <div className="table-actions-row">
+          <ActionPanel />
         </div>
       </div>
     </div>

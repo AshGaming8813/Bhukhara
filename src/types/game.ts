@@ -40,6 +40,7 @@ export interface Player {
   isHuman: boolean;
   team: 'A' | 'B';
   hand: Card[];
+  handCount?: number; // Used for opponent privacy: actual card count when hand is stripped
   hasOpenedPureSeries: boolean;
   hasClaimedBhukhara: boolean;
   justClaimedBhukharaThisTurn?: boolean;

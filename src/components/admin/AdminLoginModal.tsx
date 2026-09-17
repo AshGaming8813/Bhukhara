@@ -20,14 +20,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      // Server-Authoritative Admin Role Login
-      const res = authBackend.login(emailOrUser, password, 'admin');
+    try {
+      // Server & Cloud Authoritative Admin Role Login
+      const res = await authBackend.loginAsync(emailOrUser, password, 'admin');
       setIsSubmitting(false);
 
       if (res.success && res.session) {
@@ -35,7 +35,10 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       } else {
         setErrorMsg(res.error || 'Login failed. Invalid admin credentials or privileges.');
       }
-    }, 400);
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setErrorMsg(err?.message || 'Login failed. Invalid admin credentials or privileges.');
+    }
   };
 
   return (

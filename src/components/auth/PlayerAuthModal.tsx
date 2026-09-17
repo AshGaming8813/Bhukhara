@@ -27,13 +27,13 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const res = authBackend.login(email, password, 'player');
+    try {
+      const res = await authBackend.loginAsync(email, password, 'player');
       setIsSubmitting(false);
 
       if (res.success && res.session) {
@@ -42,7 +42,10 @@ export const PlayerAuthModal: React.FC<PlayerAuthModalProps> = ({
       } else {
         setErrorMsg(res.error || 'Login failed. Invalid credentials.');
       }
-    }, 400);
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setErrorMsg(err?.message || 'Login failed. Invalid credentials.');
+    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {

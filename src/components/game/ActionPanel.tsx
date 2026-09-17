@@ -27,13 +27,17 @@ export const ActionPanel: React.FC = () => {
 
   const showMsg = (text: string, type: 'success' | 'error' = 'error') => {
     setMessage({ text, type });
-    setTimeout(() => setMessage(null), 3500);
+    setTimeout(() => setMessage(null), 3000);
   };
 
   const handleOpenSeries = () => {
     const res = openSeriesFromSelection();
     if (!res.success) {
-      showMsg(res.message, 'error');
+      if (res.message && res.message.toLowerCase().includes('pure') && typeof (window as any).__showPureSeriesNeeded === 'function') {
+        (window as any).__showPureSeriesNeeded();
+      } else {
+        showMsg(res.message, 'error');
+      }
     } else {
       showMsg(res.message, 'success');
     }
@@ -42,7 +46,11 @@ export const ActionPanel: React.FC = () => {
   const handleOpenTriplicate = () => {
     const res = openTriplicateFromSelection();
     if (!res.success) {
-      showMsg(res.message, 'error');
+      if (res.message && res.message.toLowerCase().includes('pure') && typeof (window as any).__showPureSeriesNeeded === 'function') {
+        (window as any).__showPureSeriesNeeded();
+      } else {
+        showMsg(res.message, 'error');
+      }
     } else {
       showMsg(res.message, 'success');
     }
@@ -50,18 +58,13 @@ export const ActionPanel: React.FC = () => {
 
   const handleDiscard = () => {
     const res = discardSelectedCard();
-    if (!res.success) {
-      showMsg(res.message, 'error');
-    }
+    if (!res.success) showMsg(res.message, 'error');
   };
 
   const handleModa = () => {
     const res = attemptModa();
-    if (!res.success) {
-      showMsg(res.message, 'error');
-    } else {
-      showMsg(res.message, 'success');
-    }
+    if (!res.success) showMsg(res.message, 'error');
+    else showMsg(res.message, 'success');
   };
 
   const hasClaimedBhukhara = !!activePlayer?.justClaimedBhukharaThisTurn || !!state.claimedBhukharaThisTurn || state.phase === 'HELLO_WAIT';
@@ -79,83 +82,65 @@ export const ActionPanel: React.FC = () => {
       )}
 
       <div className="mockup-action-buttons-group">
-        {/* Series (Green) */}
         <button
           className="btn-mockup-action btn-open-series"
           disabled={isMeldDisabled}
           onClick={handleOpenSeries}
+          title="Open Series (3–7 cards same suit in sequence)"
         >
-          <div className="btn-icon-circle"><Plus size={15} /></div>
-          <div className="btn-text-content">
-            <span className="btn-main-label">Series</span>
-            <span className="btn-sub-label">(3–7 cards)</span>
-          </div>
+          <div className="btn-icon-circle"><Plus size={14} /></div>
+          <span className="btn-main-label">Series</span>
         </button>
 
-        {/* Triplicate (Purple) */}
         <button
           className="btn-mockup-action btn-open-triplicate"
           disabled={isMeldDisabled}
           onClick={handleOpenTriplicate}
+          title="Open Triplicate (3–7 cards same rank)"
         >
-          <div className="btn-icon-circle"><Users size={15} /></div>
-          <div className="btn-text-content">
-            <span className="btn-main-label">Triplicate</span>
-            <span className="btn-sub-label">(3–7 cards)</span>
-          </div>
+          <div className="btn-icon-circle"><Users size={14} /></div>
+          <span className="btn-main-label">Tripl.</span>
         </button>
 
-        {/* Draw Button (Blue) */}
         <button
           className="btn-mockup-action btn-draw-card"
           disabled={isDrawDisabled || (state.closeDeck.length === 0 && state.openDeck.length === 0)}
           onClick={drawFromCloseDeck}
+          title="Draw 1 card from Close Deck"
         >
-          <div className="btn-icon-circle"><Layers size={16} /></div>
-          <div className="btn-text-content">
-            <span className="btn-main-label">Draw</span>
-            <span className="btn-sub-label">(1 card)</span>
-          </div>
+          <div className="btn-icon-circle"><Layers size={14} /></div>
+          <span className="btn-main-label">Draw</span>
         </button>
 
-        {/* Discard Button (Red) */}
         <button
           className="btn-mockup-action btn-discard-card"
           disabled={isDiscardDisabled}
           onClick={handleDiscard}
+          title="Discard selected card"
         >
-          <div className="btn-icon-circle"><Trash2 size={16} /></div>
-          <div className="btn-text-content">
-            <span className="btn-main-label">Discard</span>
-            <span className="btn-sub-label">(1 card)</span>
-          </div>
+          <div className="btn-icon-circle"><Trash2 size={14} /></div>
+          <span className="btn-main-label">Discard</span>
         </button>
 
-        {/* Moda Button (Gold) */}
         <button
           className="btn-mockup-action btn-moda-gold"
           disabled={isModaDisabled}
           onClick={handleModa}
+          title="Declare Moda (1 card left)"
         >
-          <div className="btn-icon-circle"><Award size={16} /></div>
-          <div className="btn-text-content">
-            <span className="btn-main-label">Moda</span>
-            <span className="btn-sub-label">(1 card left)</span>
-          </div>
+          <div className="btn-icon-circle"><Award size={14} /></div>
+          <span className="btn-main-label">Moda</span>
         </button>
 
-        {/* Say Hello Button */}
         {showHelloButton && (
           <button
             className="btn-mockup-action btn-say-hello"
             disabled={isHelloDisabled}
             onClick={sayHello}
+            title="Say Hello after Bhukhara"
           >
-            <div className="btn-icon-circle"><Smile size={16} /></div>
-            <div className="btn-text-content">
-              <span className="btn-main-label">Say Hello</span>
-              <span className="btn-sub-label">(No discard)</span>
-            </div>
+            <div className="btn-icon-circle"><Smile size={14} /></div>
+            <span className="btn-main-label">Hello</span>
           </button>
         )}
       </div>

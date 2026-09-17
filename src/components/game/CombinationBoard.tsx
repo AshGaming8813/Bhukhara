@@ -59,18 +59,23 @@ export const CombinationBoard: React.FC<CombinationBoardProps> = ({ teamKey, tit
   let handCardsInfo = '';
   if (state.gameMode === '4P') {
     if (teamKey === 'A') {
-      const p1Count = players['P1']?.hand?.length ?? 0;
-      const p3Count = players['P3']?.hand?.length ?? 0;
+      const p1 = players['P1'];
+      const p3 = players['P3'];
+      const p1Count = p1?.handCount ?? p1?.hand?.length ?? 0;
+      const p3Count = p3?.handCount ?? p3?.hand?.length ?? 0;
       handCardsInfo = `P1: ${p1Count}c · P3: ${p3Count}c`;
     } else {
-      const p2Count = players['P2']?.hand?.length ?? 0;
-      const p4Count = players['P4']?.hand?.length ?? 0;
+      const p2 = players['P2'];
+      const p4 = players['P4'];
+      const p2Count = p2?.handCount ?? p2?.hand?.length ?? 0;
+      const p4Count = p4?.handCount ?? p4?.hand?.length ?? 0;
       handCardsInfo = `P2: ${p2Count}c · P4: ${p4Count}c`;
     }
   } else {
-    const ownerHandCount = boardOwner?.hand?.length ?? 0;
+    const ownerHandCount = boardOwner?.handCount ?? boardOwner?.hand?.length ?? 0;
     handCardsInfo = `${ownerHandCount} Cards`;
   }
+
 
   return (
     <div className={`comb-panel-container mockup-comb-panel ${isHumanTeam ? 'is-human-panel' : 'is-opponent-panel'}`}>

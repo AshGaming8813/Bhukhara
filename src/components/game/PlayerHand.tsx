@@ -1,59 +1,74 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
 import { CardComponent } from '../common/CardComponent';
 import { ArrowUpDown, Palette, XCircle } from 'lucide-react';
 
 export const PlayerHand: React.FC = () => {
   const { state, selectedCardIds, selectCard, clearCardSelection, sortHand } = useGame();
+  const [pureSeriesToast, setPureSeriesToast] = useState(false);
+
   const players = state?.players || {};
   const myPlayerId = state.isOnlineMode ? (state.localPlayerId || 'P1') : 'P1';
   const humanPlayer = players[myPlayerId] || players['P1'] || Object.values(players)[0];
 
+  // Register global toast trigger for ActionPanel to call
+  useEffect(() => {
+    (window as any).__showPureSeriesNeeded = () => {
+      setPureSeriesToast(true);
+      setTimeout(() => setPureSeriesToast(false), 2800);
+    };
+    return () => { delete (window as any).__showPureSeriesNeeded; };
+  }, []);
+
   if (!humanPlayer || !Array.isArray(humanPlayer.hand)) return null;
 
   const count = humanPlayer.hand.length;
+
   const getOverlapMargin = (index: number): string => {
     if (index === 0) return '0px';
-    if (count <= 4) return '-4px';
-    if (count <= 7) return '-12px';
-    if (count <= 10) return '-18px';
-    if (count <= 14) return '-24px';
-    return '-28px';
+    if (count <= 4) return '4px';
+    if (count <= 6) return '-4px';
+    if (count <= 9) return '-10px';
+    if (count <= 12) return '-16px';
+    if (count <= 14) return '-20px';
+    return '-24px';
   };
 
   return (
     <div className="player-hand-compact-section">
+      {/* Pure Series Toast */}
+      {pureSeriesToast && (
+        <div className="pure-series-toast">⚡ Pure Series required first!</div>
+      )}
+
+      {/* Compact one-line header */}
       <div className="hand-compact-header">
         <div className="hand-title-compact">
-          <span className="hand-count">Your Hand ({count} Cards)</span>
-          {humanPlayer.hasOpenedPureSeries ? (
-            <span className="pure-status pure-opened">✓ Pure Series Opened</span>
-          ) : (
-            <span className="pure-status pure-needed">⚡ Pure Series Needed</span>
-          )}
+          <span className="hand-count-pill">🃏 {count} {count === 1 ? 'Card' : 'Cards'}</span>
+          {humanPlayer.hasOpenedPureSeries
+            ? <span className="pure-status pure-opened">✓ Pure</span>
+            : <span className="pure-status pure-needed-mini">Pure ✗</span>
+          }
         </div>
-
         <div className="hand-sort-controls-compact">
           <button className="btn btn-tiny-compact" onClick={() => sortHand('rank')}>
-            <ArrowUpDown size={12} /> Sort Rank
+            <ArrowUpDown size={11} /> Rank
           </button>
           <button className="btn btn-tiny-compact" onClick={() => sortHand('suit')}>
-            <Palette size={12} /> Sort Suit
+            <Palette size={11} /> Suit
           </button>
           {selectedCardIds.length > 0 && (
             <button className="btn btn-tiny-compact btn-danger" onClick={clearCardSelection}>
-              <XCircle size={12} /> Clear ({selectedCardIds.length})
+              <XCircle size={11} /> ({selectedCardIds.length})
             </button>
           )}
         </div>
       </div>
 
-      {/* Ultra-Compact Cards Row */}
+      {/* Cards Row */}
       <div className="cards-hand-compact-container">
         {count === 0 ? (
-          <div className="empty-hand-banner-compact">
-            ✋ HAND EMPTY — WAITING FOR NEXT TURN
-          </div>
+          <div className="empty-hand-banner-compact">✋ Hand empty</div>
         ) : (
           humanPlayer.hand.map((card, idx) => {
             const isSelected = selectedCardIds.includes(card.id);

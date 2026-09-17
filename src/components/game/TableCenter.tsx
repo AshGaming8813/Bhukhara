@@ -205,46 +205,50 @@ export const TableCenter: React.FC = () => {
       {/* Interactive Expanded Open Deck Cards Viewer Overlay */}
       {isOpenDeckExpanded && openDeck.length > 0 && (
         <div
-          className="open-deck-viewer-overlay"
-          onMouseEnter={() => setIsOpenDeckExpanded(true)}
-          onMouseLeave={() => setIsOpenDeckExpanded(false)}
+          className="open-deck-modal-backdrop"
+          onClick={() => setIsOpenDeckExpanded(false)}
         >
-          <div className="viewer-header">
-            <span>ALL OPEN DECK CARDS ({openDeck.length} CARDS)</span>
-            <button
-              className="btn-close-viewer"
-              onClick={() => setIsOpenDeckExpanded(false)}
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          <div className="viewer-cards-scroll">
-            {openDeck.map((card, idx) => (
-              <div
-                key={card.id}
-                className={`viewer-card-wrapper ${canDraw ? 'clickable-card' : ''}`}
-                onClick={(e) => {
-                  if (canDraw) {
-                    e.stopPropagation();
-                    takeFromOpenDeck(idx);
-                    setIsOpenDeckExpanded(false);
-                  }
-                }}
-                onDoubleClick={(e) => handleOpenDeckDoubleClick(e, idx)}
-                title={canDraw ? `Click / Double Tap to pick up ALL cards starting from ${card.rank} ${card.suit}` : ''}
+          <div
+            className="open-deck-viewer-overlay"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="viewer-header">
+              <span>ALL OPEN DECK CARDS ({openDeck.length} CARDS)</span>
+              <button
+                className="btn-close-viewer"
+                onClick={() => setIsOpenDeckExpanded(false)}
               >
-                <CardComponent card={card} />
-                <span className="card-index-tag">#{idx + 1}</span>
-              </div>
-            ))}
-          </div>
-
-          {canDraw && (
-            <div className="viewer-action-hint">
-              ✋ Double tap or click any card to compulsory pick up ALL {openDeck.length} cards from Open Deck!
+                <X size={18} />
+              </button>
             </div>
-          )}
+
+            <div className="viewer-cards-scroll">
+              {openDeck.map((card, idx) => (
+                <div
+                  key={card.id}
+                  className={`viewer-card-wrapper ${canDraw ? 'clickable-card' : ''}`}
+                  onClick={(e) => {
+                    if (canDraw) {
+                      e.stopPropagation();
+                      takeFromOpenDeck(idx);
+                      setIsOpenDeckExpanded(false);
+                    }
+                  }}
+                  onDoubleClick={(e) => handleOpenDeckDoubleClick(e, idx)}
+                  title={canDraw ? `Click / Double Tap to pick up ALL cards starting from ${card.rank} ${card.suit}` : ''}
+                >
+                  <CardComponent card={card} />
+                  <span className="card-index-tag">#{idx + 1}</span>
+                </div>
+              ))}
+            </div>
+
+            {canDraw && (
+              <div className="viewer-action-hint">
+                ✋ Double tap or click any card to compulsory pick up ALL {openDeck.length} cards from Open Deck!
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

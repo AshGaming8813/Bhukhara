@@ -146,11 +146,33 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const [activeEmote, setActiveEmote] = useState<OnlineEmoteEvent | null>(null);
 
+  // Strip private hand cards from opponent players before broadcasting to Firebase
+  // Each player's own hand is preserved locally and never sent to other clients
+  const scrubPrivateHands = useCallback((stateToSync: GameState, mySlotId: string | undefined): GameState => {
+    if (!mySlotId) return stateToSync;
+    const scrubbedPlayers: typeof stateToSync.players = {};
+    Object.entries(stateToSync.players).forEach(([pid, player]) => {
+      if (player.id === mySlotId || pid === mySlotId) {
+        // Keep own hand intact
+        scrubbedPlayers[pid] = player;
+      } else {
+        // Replace opponent hand with empty array; preserve handCount for display
+        scrubbedPlayers[pid] = {
+          ...player,
+          hand: [],
+          handCount: player.hand?.length ?? (player as any).handCount ?? 0,
+        };
+      }
+    });
+    return { ...stateToSync, players: scrubbedPlayers };
+  }, []);
+
   const syncOnlineState = useCallback((newState: GameState) => {
     if (newState.isOnlineMode && newState.onlineRoomCode) {
-      onlineEngine.syncGameState(newState.onlineRoomCode, newState);
+      const scrubbed = scrubPrivateHands(newState, newState.localPlayerId);
+      onlineEngine.syncGameState(newState.onlineRoomCode, scrubbed);
     }
-  }, []);
+  }, [scrubPrivateHands]);
 
   const setOnlineGameState = useCallback((newState: GameState) => {
     setState(prev => {
@@ -198,8 +220,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log(`[REALTIME RECEIVED] roomCode: ${newState.onlineRoomCode} version: ${newState.version} localPlayerId: ${clientLocalId}`);
       console.log(`[PUBLIC STATE APPLIED] version: ${newState.version} openedCombinations: ${Object.values(newState.combinations || {}).flat().length} currentTurn: ${newState.currentTurnPlayerId}`);
 
+      // 3. PRIVACY RESTORE: incoming broadcast has opponent hands stripped to [].
+      // Restore OUR OWN hand from prev local state so we don't lose our cards on remote update.
+      const mergedPlayers = { ...newState.players };
+      if (clientLocalId && prev.players[clientLocalId]) {
+        const prevMyPlayer = prev.players[clientLocalId];
+        const incomingMyPlayer = newState.players[clientLocalId];
+        // Only restore own hand if incoming is empty (scrubbed broadcast), not an intentional empty hand
+        if (incomingMyPlayer && prevMyPlayer.hand && prevMyPlayer.hand.length > 0 && incomingMyPlayer.hand.length === 0) {
+          mergedPlayers[clientLocalId] = {
+            ...incomingMyPlayer,
+            hand: prevMyPlayer.hand,
+          };
+        }
+      }
+
       const mergedState: GameState = {
         ...newState,
+        players: mergedPlayers,
         isOnlineMode: true,
         localPlayerId: clientLocalId,
       };
@@ -284,7 +322,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return player.team || 'A';
   };
 
-  const endBazzi = useCallback((currentState: GameState, winningTeamId: string): GameState => {
+  const endBazzi = useCallback((currentState: GameState, _winningTeamId: string): GameState => {
     soundEngine.playWin();
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
 
@@ -321,10 +359,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const bScores = calculateBazziScores(teamIds, autoCombs, handsByTeam, modasByTeam);
 
+    const scoreA = bScores[teamIds[0]]?.total || 0;
+    const scoreB = bScores[teamIds[1]]?.total || 0;
+    const bazziWinnerId = scoreA > scoreB ? teamIds[0] : (scoreB > scoreA ? teamIds[1] : 'DRAW');
+
     const bazziRes: BazziResult = {
       bazziNumber: currentState.currentBazzi,
       scores: bScores,
-      winnerId: winningTeamId,
+      winnerId: bazziWinnerId,
     };
 
     const updatedBazziResults = [...(currentState.bazziResults || []), bazziRes];
@@ -380,10 +422,16 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncOnlineState(nextState);
       return nextState;
     } else {
-      let overallWinner = winningTeamId;
+      let overallWinner = 'DRAW';
       if (currentState.bazziMode === 2 && updatedBazziResults.length >= 2) {
         const totalA = (updatedBazziResults[0]?.scores[teamIds[0]]?.total || 0) + (updatedBazziResults[1]?.scores[teamIds[0]]?.total || 0);
         const totalB = (updatedBazziResults[0]?.scores[teamIds[1]]?.total || 0) + (updatedBazziResults[1]?.scores[teamIds[1]]?.total || 0);
+        if (totalA > totalB) overallWinner = teamIds[0];
+        else if (totalB > totalA) overallWinner = teamIds[1];
+        else overallWinner = 'DRAW';
+      } else {
+        const totalA = updatedBazziResults[0]?.scores[teamIds[0]]?.total || 0;
+        const totalB = updatedBazziResults[0]?.scores[teamIds[1]]?.total || 0;
         if (totalA > totalB) overallWinner = teamIds[0];
         else if (totalB > totalA) overallWinner = teamIds[1];
         else overallWinner = 'DRAW';
