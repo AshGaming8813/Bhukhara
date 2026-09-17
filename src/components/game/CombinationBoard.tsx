@@ -117,7 +117,12 @@ export const CombinationBoard: React.FC<CombinationBoardProps> = ({ teamKey, tit
           combinations.map(comb => {
             const isCompleted = comb.cards.length >= 7;
             const isExpanded = expandedCompletedIds.includes(comb.id);
-            const isCanAdd = isHumanTurn && selectedCards.length > 0 && !isCompleted ? canCardsFitCombination(selectedCards, comb) : false;
+            const isMyTeam = humanPlayer?.team === teamKey;
+            
+            // Only highlight if it's the player's OWN team's combination (don't give hints about opponents)
+            const isCanAdd = isHumanTurn && isMyTeam && selectedCards.length > 0 && !isCompleted 
+              ? canCardsFitCombination(selectedCards, comb) 
+              : false;
 
             // COMPLETED 7-CARD COMBINATION (AUTO-COLLAPSED STACK PREVIEW)
             if (isCompleted && !isExpanded) {

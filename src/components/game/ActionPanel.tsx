@@ -169,7 +169,7 @@ export const ActionPanel: React.FC = () => {
           <button className="btn btn-tiny-compact" onClick={() => sortHand('suit')}>
             <Palette size={11} /> Suit
           </button>
-          {selectedCardIds.length > 0 && (
+          {isHumanTurn && selectedCardIds.length > 0 && (
             <button className="btn btn-tiny-compact btn-danger" onClick={clearCardSelection}>
               <XCircle size={11} /> ({selectedCardIds.length})
             </button>
