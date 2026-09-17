@@ -1277,6 +1277,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
 
+    if (!state.hasDrawnThisTurn) {
+      return {
+        success: false,
+        message: 'You MUST draw a card from the Close or Open Deck before claiming Moda!',
+      };
+    }
+
+    if (activePlayer.justClaimedBhukharaThisTurn && state.modaCount >= 1) {
+      return {
+        success: false,
+        message: 'You cannot claim First and Second Moda back-to-back! Discard a card to end your turn.',
+      };
+    }
+
     const modaCard = activePlayer.hand[0];
 
     // Check ONLY the player's/team's own combinations (players cannot add cards to opponent combinations)

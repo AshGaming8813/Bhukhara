@@ -2363,141 +2363,91 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   NEW LAYOUT SYSTEM — Top Info Row + Combo Workspace
+   NEW LAYOUT SYSTEM — Combinations DOMINANT
    ═══════════════════════════════════════════════════════════ */
 
-/* Override felt container to use column flexbox with defined rows */
+/* Felt container: vertical column, combos fill everything */
 .table-felt-container {
   display: flex !important;
   flex-direction: column !important;
-  padding: 4px 8px !important;
+  padding: 4px 6px !important;
   gap: 4px !important;
   overflow: hidden !important;
+  flex: 1 !important;
+  min-height: 0 !important;
 }
 
-/* ── Row 1: Player info chips + decks ── */
-.table-top-info-row {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-  flex-shrink: 0;
-  min-height: 0;
+/* ── ROW 1: DOMINANT WORKSPACE (Combo 1 | Decks | Combo 2) ── */
+.table-combo-workspace {
+  flex: 1 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  width: 100% !important;
 }
 
-.player-info-chip {
-  background: rgba(4, 18, 14, 0.92);
-  border: 1.5px solid var(--gold-primary);
-  border-radius: 10px;
-  padding: 6px 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  min-width: 120px;
-  max-width: 180px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+/* Combination panels fill their grid cell */
+.table-combo-workspace .comb-panel-container {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
 }
 
-.my-info-chip {
-  border-color: #27ae60;
-  box-shadow: 0 0 8px rgba(39,174,96,0.3);
+/* Combination body scrolls if needed */
+.table-combo-workspace .comb-panel-body {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
 }
 
-.opp-info-chip {
-  border-color: #e74c3c;
-  box-shadow: 0 0 8px rgba(231,76,60,0.3);
+/* ── CENTER DECKS COLUMN ── */
+.table-center-column {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  height: 100% !important;
 }
 
-.info-chip-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+.online-room-inline {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  gap: 6px;
   flex-shrink: 0;
+  margin-bottom: 4px;
 }
 
-.info-chip-avatar--me {
-  background: rgba(39, 174, 96, 0.2);
-  border: 1px solid #27ae60;
+/* Scale down the decks slightly so they don't take too much width */
+.table-center-column .deck-card-box {
+  transform: scale(0.85) !important;
+  transform-origin: center !important;
 }
 
-.info-chip-avatar--opp {
-  background: rgba(231, 76, 60, 0.2);
-  border: 1px solid #e74c3c;
-}
-
-.info-chip-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.info-chip-name {
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: var(--gold-light);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.info-chip-sub {
-  font-size: 0.68rem;
-  color: rgba(255,255,255,0.65);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.info-chip-cards {
-  background: rgba(212,175,55,0.15);
-  border: 1px solid rgba(212,175,55,0.4);
-  border-radius: 8px;
-  padding: 1px 6px;
-  font-size: 0.68rem;
-  font-weight: 800;
-  color: var(--gold-light);
-}
-
-.table-center-column {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow: hidden;
-}
-
-/* ── Row 2: Combination workspace ── */
-.table-combo-workspace {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* Make combination panels fill workspace */
-.table-combo-workspace .comb-panel-container {
-  height: 100%;
-  overflow: hidden;
-}
-
-/* ── Row 3: Hand ── */
+/* ── ROW 2: Compact Hand ── */
 .table-hand-row {
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
+  margin-top: 4px !important;
 }
 
-/* ── Row 4: Actions ── */
+.cards-hand-compact-container {
+  min-height: 55px !important;
+  padding: 2px !important;
+}
+
+.hand-compact-header {
+  margin-bottom: 2px !important;
+}
+
+/* ── ROW 3: Actions ── */
 .table-actions-row {
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
 }
 
 /* ── Pure Series Toast ── */
@@ -2589,22 +2539,6 @@
 
 /* ── Responsive: narrow screens ── */
 @media (max-width: 640px) {
-  .player-info-chip {
-    min-width: 90px !important;
-    padding: 4px 6px !important;
-    gap: 5px !important;
-  }
-
-  .info-chip-name {
-    font-size: 0.7rem !important;
-  }
-
-  .info-chip-avatar {
-    width: 26px !important;
-    height: 26px !important;
-    font-size: 0.9rem !important;
-  }
-
   .table-combo-workspace {
     gap: 4px !important;
   }
@@ -2617,13 +2551,50 @@
   }
 }
 
-@media (max-width: 480px) {
-  .player-info-chip {
-    min-width: 72px !important;
-  }
-  
-  .info-chip-sub {
-    display: none !important;
-  }
+/* ── UNIFIED ACTION BAR ── */
+.unified-action-bar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  gap: 8px !important;
 }
 
+.hand-title-compact {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+}
+
+.hand-sort-controls-compact {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+}
+
+.btn-tiny-compact {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  font-size: 0.65rem !important;
+  padding: 2px 6px !important;
+  height: 24px !important;
+  border-radius: 4px !important;
+  background: rgba(255,255,255,0.1) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  cursor: pointer !important;
+}
+
+.btn-tiny-compact:hover {
+  background: rgba(255,255,255,0.2) !important;
+}
+
+@media (max-width: 768px) {
+  .unified-action-bar {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+  }
+}

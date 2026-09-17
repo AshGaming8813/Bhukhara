@@ -134,15 +134,6 @@ export const CombinationBoard: React.FC<CombinationBoardProps> = ({ teamKey, tit
                   onClick={e => toggleExpandCompleted(comb.id, e)}
                   title="Completed 7-Card Combination! Click to view all cards."
                 >
-                  <div className="stack-badge-header">
-                    <span className="type-pill completed-pill">
-                      <CheckCircle2 size={11} /> {isTriplicate ? 'Triplicate (7)' : 'Series (7)'}
-                    </span>
-                    {isHumanTeam && (
-                      <span className="pts-pill">{(pts ?? 0).toFixed(0)} pts {hasJoker ? '★' : ''}</span>
-                    )}
-                  </div>
-
                   <div className="completed-stack-preview">
                     <div className="completed-card-peek peek-3"></div>
                     <div className="completed-card-peek peek-2"></div>
@@ -167,26 +158,6 @@ export const CombinationBoard: React.FC<CombinationBoardProps> = ({ teamKey, tit
                 }`}
                 onClick={() => handleAddToCombination(comb)}
               >
-                {/* Header Pills */}
-                <div className="stack-badge-header">
-                  <span className={`type-pill ${isTriplicate ? 'triplicate-pill' : 'series-pill'}`}>
-                    {isTriplicate ? `Triplicate (${comb.cards.length})` : `Series (${comb.cards.length})`}
-                  </span>
-                  {isHumanTeam && (
-                    <span className="pts-pill">{(pts ?? 0).toFixed(0)} pts {hasJoker ? '★' : ''}</span>
-                  )}
-
-                  {isCompleted && (
-                    <button
-                      className="btn-collapse-compact"
-                      onClick={e => toggleExpandCompleted(comb.id, e)}
-                      title="Collapse completed stack"
-                    >
-                      <EyeOff size={10} />
-                    </button>
-                  )}
-                </div>
-
                 {isCanAdd && (
                   <div className="add-card-overlay">
                     <PlusCircle size={14} /> ADD ({selectedCards.length})

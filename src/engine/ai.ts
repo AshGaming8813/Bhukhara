@@ -432,7 +432,8 @@ export function getAIDecision(
   // ----------------------------------------------------
   // PHASE 3: MODA EVALUATION (Hand Size === 1)
   // ----------------------------------------------------
-  if (hand.length === 1) {
+  const currentHasDrawn = gameState?.hasDrawnThisTurn || hasDrawn;
+  if (hand.length === 1 && currentHasDrawn && !(aiPlayer.justClaimedBhukharaThisTurn && (gameState?.modaCount || 0) >= 1)) {
     const lastCard = hand[0];
     const modaCheck = validateModa(lastCard, teamCombinations);
 

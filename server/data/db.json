@@ -59,8 +59,183 @@
       "status": "active",
       "created_at": "2026-08-10T16:45:00.000Z",
       "updated_at": "2026-09-05T17:02:02.124Z"
+    },
+    {
+      "id": "usr_1788801254358_o0os",
+      "player_id": "BHUK-100005",
+      "username": "AaravTest",
+      "email": "aarav.test@bhukhara.app",
+      "password_hash": "hash_7da1356a",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-07T17:14:14.358Z",
+      "updated_at": "2026-09-07T17:14:14.358Z"
+    },
+    {
+      "id": "usr_1789068369093_a1qz",
+      "player_id": "BHUK-100006",
+      "username": "testuser",
+      "email": "testuser@example.com",
+      "password_hash": "hash_7da1356a",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-10T19:26:09.093Z",
+      "updated_at": "2026-09-17T08:49:38.016Z"
+    },
+    {
+      "id": "usr_1788856324467_966g",
+      "player_id": "BHUK-100007",
+      "username": "Rohit",
+      "email": "rohitjaatjaat91@gmail.com",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-08T08:32:04.467Z",
+      "updated_at": "2026-09-17T08:49:38.036Z"
+    },
+    {
+      "id": "usr_1788856393526_9m0f",
+      "player_id": "BHUK-100008",
+      "username": "Amit jat",
+      "email": "amit@bhukara.com",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-08T08:33:13.526Z",
+      "updated_at": "2026-09-17T08:49:38.047Z"
+    },
+    {
+      "id": "usr_1788930798898_jej9",
+      "player_id": "BHUK-100009",
+      "username": "Namit4",
+      "email": "namit@bhukhara.com",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-09T05:13:18.898Z",
+      "updated_at": "2026-09-17T08:49:38.061Z"
+    },
+    {
+      "id": "usr_1788943153418_tvks",
+      "player_id": "BHUK-100010",
+      "username": "Ravi",
+      "email": "badesraravi6@gmail.com",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-09T08:39:13.418Z",
+      "updated_at": "2026-09-17T08:49:38.097Z"
+    },
+    {
+      "id": "usr_1788943180439_uzbm",
+      "player_id": "BHUK-100011",
+      "username": "Kapil",
+      "email": "kapilbadesra9@gmail.com",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-09T08:39:40.439Z",
+      "updated_at": "2026-09-17T08:49:38.114Z"
+    },
+    {
+      "id": "usr_1788945103172_zkj7",
+      "player_id": "BHUK-100012",
+      "username": "Hardeep",
+      "email": "badesrahardeep1122@gmail.com",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-09T09:11:43.172Z",
+      "updated_at": "2026-09-17T08:49:38.125Z"
+    },
+    {
+      "id": "usr_1788948984964_7fc7",
+      "player_id": "BHUK-100013",
+      "username": "Ashishgulia0007",
+      "email": "ashishgulia788@gmail.com",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-09T10:16:24.964Z",
+      "updated_at": "2026-09-17T08:49:38.134Z"
+    },
+    {
+      "id": "usr_1788949024680_4hrp",
+      "player_id": "BHUK-100014",
+      "username": "Ashishgulia000777",
+      "email": "ashishgulia7878@gmail.com",
+      "password_hash": "hash_778cd810",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-09T10:17:04.680Z",
+      "updated_at": "2026-09-17T08:49:38.145Z"
+    },
+    {
+      "id": "usr_1789634102270_lzad",
+      "player_id": "BHUK-100015",
+      "username": "Namit7",
+      "email": "namit@bhukhara.app.app",
+      "password_hash": "hash_41b971cc",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-17T08:35:02.270Z",
+      "updated_at": "2026-09-17T08:49:38.162Z"
+    },
+    {
+      "id": "usr_guest_player",
+      "player_id": "BHUK-GUEST",
+      "username": "Guest Player",
+      "email": "guest@bhukhara.app",
+      "password_hash": "hash_61bbe387",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-10T19:45:33.022Z",
+      "updated_at": "2026-09-17T08:49:38.175Z"
+    },
+    {
+      "id": "usr_1789635038563_1kae",
+      "player_id": "BHUK-100016",
+      "username": "Namit8",
+      "email": "namit@bhukhara.app.namit",
+      "password_hash": "hash_41b971cc",
+      "role": "player",
+      "coin_balance": 1000,
+      "status": "active",
+      "created_at": "2026-09-17T08:50:38.563Z",
+      "updated_at": "2026-09-17T08:50:38.563Z"
     }
   ],
   "adjustments": [],
-  "sessions": {}
+  "sessions": {
+    "token_usr_1788801254358_o0os_1788801254360": {
+      "token": "token_usr_1788801254358_o0os_1788801254360",
+      "userId": "usr_1788801254358_o0os",
+      "player_id": "BHUK-100005",
+      "username": "AaravTest",
+      "email": "aarav.test@bhukhara.app",
+      "role": "player",
+      "expiresAt": 1789406054360
+    },
+    "token_usr_1789635038563_1kae_1789635038565": {
+      "token": "token_usr_1789635038563_1kae_1789635038565",
+      "userId": "usr_1789635038563_1kae",
+      "player_id": "BHUK-100016",
+      "username": "Namit8",
+      "email": "namit@bhukhara.app.namit",
+      "role": "player",
+      "expiresAt": 1790239838565
+    }
+  }
 }

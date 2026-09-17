@@ -41,29 +41,7 @@ export const PlayerHand: React.FC = () => {
         <div className="pure-series-toast">⚡ Pure Series required first!</div>
       )}
 
-      {/* Compact one-line header */}
-      <div className="hand-compact-header">
-        <div className="hand-title-compact">
-          <span className="hand-count-pill">🃏 {count} {count === 1 ? 'Card' : 'Cards'}</span>
-          {humanPlayer.hasOpenedPureSeries
-            ? <span className="pure-status pure-opened">✓ Pure</span>
-            : <span className="pure-status pure-needed-mini">Pure ✗</span>
-          }
-        </div>
-        <div className="hand-sort-controls-compact">
-          <button className="btn btn-tiny-compact" onClick={() => sortHand('rank')}>
-            <ArrowUpDown size={11} /> Rank
-          </button>
-          <button className="btn btn-tiny-compact" onClick={() => sortHand('suit')}>
-            <Palette size={11} /> Suit
-          </button>
-          {selectedCardIds.length > 0 && (
-            <button className="btn btn-tiny-compact btn-danger" onClick={clearCardSelection}>
-              <XCircle size={11} /> ({selectedCardIds.length})
-            </button>
-          )}
-        </div>
-      </div>
+
 
       {/* Cards Row */}
       <div className="cards-hand-compact-container">

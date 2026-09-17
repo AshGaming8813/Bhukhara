@@ -59,13 +59,14 @@ html, body {
 /* Home Screen Styling */
 .home-screen {
   position: relative;
-  min-height: 100vh;
+  height: 100%;
+  width: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   background: radial-gradient(circle at center, #0f4c3a 0%, #061c16 100%);
-  overflow: hidden;
-  padding: 20px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 40px 20px;
 }
 
 .bg-cards-container {
@@ -101,6 +102,7 @@ html, body {
   z-index: 10;
   max-width: 540px;
   width: 100%;
+  margin: auto;
   background: rgba(6, 28, 22, 0.85);
   backdrop-filter: blur(10px);
   border: 2px solid var(--gold-primary);

@@ -91,20 +91,18 @@ export const GameTable: React.FC<GameTableProps> = ({
 
   return (
     <div className="game-table-screen">
-      {/* Mobile Portrait Orientation Prompt Overlay */}
+      {/* Portrait overlay */}
       {isPortraitMobile && !dismissRotatePrompt && (
-        <div className="rotate-device-overlay" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(4, 18, 14, 0.96)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', color: '#fff' }}>
-          <div style={{ background: 'linear-gradient(145deg, #0c2b20, #04120e)', border: '2px solid #d4af37', borderRadius: '24px', padding: '28px 24px', maxWidth: '340px', boxShadow: '0 0 40px rgba(212, 175, 55, 0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <div style={{ background: 'rgba(212, 175, 55, 0.15)', border: '1px solid #d4af37', padding: '16px', borderRadius: '50%', color: '#f1c40f', boxShadow: '0 0 20px rgba(241, 196, 15, 0.3)' }}>
+        <div className="rotate-device-overlay" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(4,18,14,0.96)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', color: '#fff' }}>
+          <div style={{ background: 'linear-gradient(145deg,#0c2b20,#04120e)', border: '2px solid #d4af37', borderRadius: '24px', padding: '28px 24px', maxWidth: '340px', boxShadow: '0 0 40px rgba(212,175,55,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+            <div style={{ background: 'rgba(212,175,55,0.15)', border: '1px solid #d4af37', padding: '16px', borderRadius: '50%', color: '#f1c40f' }}>
               <RotateCw size={44} className="spin-slow" />
             </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#f1c40f', margin: 0, letterSpacing: '1px' }}>
-              ROTATE PHONE TO LANDSCAPE
-            </h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#f1c40f', margin: 0 }}>ROTATE PHONE TO LANDSCAPE</h2>
             <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5 }}>
-              Bhukhara requires a wide landscape card table layout to display Team A, Decks, Team B, and 13-card player hands cleanly without cropping!
+              Bhukhara needs landscape mode for the card table.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginTop: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
               <button className="btn btn-gold btn-large" onClick={handleFullscreenAndRotate} style={{ width: '100%', justifyContent: 'center', gap: '8px' }}>
                 <Maximize2 size={18} /> ROTATE &amp; PLAY FULLSCREEN
               </button>
@@ -116,12 +114,11 @@ export const GameTable: React.FC<GameTableProps> = ({
         </div>
       )}
 
-      {/* Top Header Bar */}
+      {/* Status bar */}
       <StatusHeader onOpenSettings={onOpenSettings} onConfirmRestart={onConfirmRestart} onConfirmLeave={onConfirmLeave} />
 
-      {/* Main Table Felt */}
+      {/* Green felt — simple column layout */}
       <div className="table-felt-container">
-        {/* Emote Toast */}
         {activeEmote && (
           <div className="active-emote-toast animate-bounce-pop">
             <span className="emote-sender-name">{activeEmote.senderName}</span>
@@ -129,73 +126,39 @@ export const GameTable: React.FC<GameTableProps> = ({
           </div>
         )}
 
-        {/* ── ROW 1: Player info + Central Decks ── */}
-        <div className="table-top-info-row">
-          {/* My Info Panel */}
-          <div className="player-info-chip my-info-chip">
-            <div className="info-chip-avatar info-chip-avatar--me">
-              <span>👑</span>
-            </div>
-            <div className="info-chip-text">
-              <span className="info-chip-name">{myName}</span>
-              <span className="info-chip-sub">
-                {myPlayerId}
-                <span className="info-chip-cards">
-                  🃏 {myPlayer?.hand?.length ?? 0}
-                </span>
-              </span>
-            </div>
-          </div>
-
-          {/* Center: Decks */}
-          <div className="table-center-column">
-            {state.isOnlineMode && (
-              <div className="online-table-top-bar" style={{ marginBottom: '4px' }}>
-                <span className="online-room-tag">🟢 ONLINE #{state.onlineRoomCode}</span>
-                <EmotePicker onSendEmote={sendOnlineEmote} />
-              </div>
-            )}
-            <TableCenter />
-          </div>
-
-          {/* Opponent Info Panel */}
-          <div className="player-info-chip opp-info-chip">
-            <div className="info-chip-avatar info-chip-avatar--opp">
-              <span>🤖</span>
-            </div>
-            <div className="info-chip-text">
-              <span className="info-chip-name">{opponentName}</span>
-              <span className="info-chip-sub">
-                {opponentSlotId}
-                <span className="info-chip-cards">
-                  🃏 {(opponentPlayer?.handCount ?? opponentPlayer?.hand?.length ?? 0)}
-                </span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── ROW 2: Large Combination Workspace ── */}
+        {/* ── ROW 1 (DOMINANT): Combos + Decks in center ── */}
         <div className="table-combo-workspace">
           {is4P ? (
             <>
-              <CombinationBoard teamKey="A" title="Team A Combinations (You &amp; P3)" />
-              <CombinationBoard teamKey="B" title="Team B Combinations (P2 &amp; P4)" />
+              <CombinationBoard teamKey="A" title="Team A" />
+              <div className="table-center-column">
+                <TableCenter />
+              </div>
+              <CombinationBoard teamKey="B" title="Team B" />
             </>
           ) : (
             <>
-              <CombinationBoard teamKey={myPlayerId} title={`Your Combinations (${myName})`} />
-              <CombinationBoard teamKey={opponentSlotId} title={`${opponentName}'s Combinations`} />
+              <CombinationBoard teamKey={myPlayerId} title={myName} />
+              <div className="table-center-column">
+                {state.isOnlineMode && (
+                  <div className="online-room-inline">
+                    <span className="online-room-tag">🟢 #{state.onlineRoomCode}</span>
+                    <EmotePicker onSendEmote={sendOnlineEmote} />
+                  </div>
+                )}
+                <TableCenter />
+              </div>
+              <CombinationBoard teamKey={opponentSlotId} title={opponentName} />
             </>
           )}
         </div>
 
-        {/* ── ROW 3: Compact Private Hand ── */}
+        {/* ── ROW 2: Player's private hand ── */}
         <div className="table-hand-row">
           <PlayerHand />
         </div>
 
-        {/* ── ROW 4: Action Buttons ── */}
+        {/* ── ROW 3: Action buttons ── */}
         <div className="table-actions-row">
           <ActionPanel />
         </div>
@@ -203,3 +166,4 @@ export const GameTable: React.FC<GameTableProps> = ({
     </div>
   );
 };
+
