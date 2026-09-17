@@ -6,7 +6,6 @@ import { X } from 'lucide-react';
 
 export const TableCenter: React.FC = () => {
   const { state, drawFromCloseDeck, takeFromOpenDeck } = useGame();
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isOpenDeckExpanded, setIsOpenDeckExpanded] = useState(false);
 
   if (!state) return null;
@@ -23,21 +22,6 @@ export const TableCenter: React.FC = () => {
   const bhukharaPile = Array.isArray(state.bhukharaPile) ? state.bhukharaPile : [];
 
   const lastPlayedCard = openDeck.length > 0 ? openDeck[openDeck.length - 1] : null;
-
-  // Single Click / Tap handler (opens/toggles viewer)
-  const handleOpenDeckClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsOpenDeckExpanded(prev => !prev);
-  };
-
-  // Double Click / Double Tap handler (takes cards)
-  const handleOpenDeckDoubleClick = (e: React.MouseEvent, cardIndex: number) => {
-    e.stopPropagation();
-    if (canDraw) {
-      takeFromOpenDeck(cardIndex);
-      setIsOpenDeckExpanded(false);
-    }
-  };
 
   return (
     <div className="table-center-area mockup-center-area">
@@ -125,8 +109,7 @@ export const TableCenter: React.FC = () => {
                 }}
               >
                 <div className="open-deck-card-container">
-                  {openDeck.slice(-3).map((card, sliceIdx, arr) => {
-                    const globalIdx = openDeck.length - arr.length + sliceIdx;
+                  {openDeck.slice(-3).map((card, sliceIdx) => {
                     const offsetLeft = sliceIdx * 4;
                     const offsetTop = sliceIdx * 2;
 

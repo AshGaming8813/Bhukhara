@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
 import { CardComponent } from '../common/CardComponent';
-import { ArrowUpDown, Palette, XCircle } from 'lucide-react';
 
 export const PlayerHand: React.FC = () => {
-  const { state, selectedCardIds, selectCard, clearCardSelection, sortHand } = useGame();
+  const { state, selectedCardIds, selectCard } = useGame();
   const [pureSeriesToast, setPureSeriesToast] = useState(false);
 
   const players = state?.players || {};

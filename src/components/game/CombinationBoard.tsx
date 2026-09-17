@@ -3,8 +3,7 @@ import { useGame } from '../../context/GameContext';
 import { CardComponent } from '../common/CardComponent';
 import type { Combination, Card } from '../../types/game';
 import { canCardsFitCombination } from '../../engine/validation';
-import { calculateCombinationPoints } from '../../engine/scoring';
-import { PlusCircle, CheckCircle2, Eye, EyeOff, User, Star } from 'lucide-react';
+import { PlusCircle, Eye, User, Star } from 'lucide-react';
 
 interface CombinationBoardProps {
   teamKey: string;
@@ -76,7 +75,6 @@ export const CombinationBoard: React.FC<CombinationBoardProps> = ({ teamKey, tit
     handCardsInfo = `${ownerHandCount} Cards`;
   }
 
-
   return (
     <div className={`comb-panel-container mockup-comb-panel ${isHumanTeam ? 'is-human-panel' : 'is-opponent-panel'}`}>
       {/* Panel Header Matching Mockup */}
@@ -117,13 +115,9 @@ export const CombinationBoard: React.FC<CombinationBoardProps> = ({ teamKey, tit
           </div>
         ) : (
           combinations.map(comb => {
-            const pts = calculateCombinationPoints(comb);
             const isCompleted = comb.cards.length >= 7;
             const isExpanded = expandedCompletedIds.includes(comb.id);
             const isCanAdd = isHumanTurn && selectedCards.length > 0 && !isCompleted ? canCardsFitCombination(selectedCards, comb) : false;
-            const jokersInComb = comb.cards.filter(c => c.isJoker);
-            const hasJoker = jokersInComb.length > 0;
-            const isTriplicate = comb.type === 'TRIPLICATE';
 
             // COMPLETED 7-CARD COMBINATION (AUTO-COLLAPSED STACK PREVIEW)
             if (isCompleted && !isExpanded) {
